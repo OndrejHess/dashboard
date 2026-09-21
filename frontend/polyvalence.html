@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polyvalence Tracker - Matice způsobilosti</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --primary: #1976d2;
+            --color-i: #fbc02d;
+            --color-l: #f57c00;
+            --color-u: #388e3c;
+            --color-o: #7b1fa2;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 25px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+        }
+        .poly-card {
+            background: var(--card-bg);
+            border: 1px solid #dcdcdc;
+            border-radius: 8px;
+            padding: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left-width: 6px;
+        }
+        .poly-card.cat-i { border-left-color: var(--color-i); }
+        .poly-card.cat-l { border-left-color: var(--color-l); }
+        .poly-card.cat-u { border-left-color: var(--color-u); }
+        .poly-card.cat-o { border-left-color: var(--color-o); }
+
+        .badge-circle {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            flex-shrink: 0;
+            font-size: 15px;
+        }
+        .badge-circle.i { background: var(--color-i); }
+        .badge-circle.l { background: var(--color-l); }
+        .badge-circle.u { background: var(--color-u); }
+        .badge-circle.o { background: var(--color-o); }
+    </style>
+</head>
+<body>
+
+    <div class="d-flex justify-content-between align-items-center mb-4 bg-dark text-white p-3 rounded shadow-sm">
+        <h3 class="m-0">👤 Polyvalence Tracker (SQL Automat)</h3>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-light btn-sm" onclick="openSettings()">⚙️ Nastavení limitů</button>
+            <button class="btn btn-primary btn-sm" onclick="loadData()">🔄 Obnovit data z SQL</button>
+            <a href="/" class="btn btn-secondary btn-sm">← Zpět na dashboard</a>
+        </div>
+    </div>
+
+    <div class="card p-3 mb-4 shadow-sm">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-4">
+                <label class="form-label fw-bold small">Filtrovat dle operátora:</label>
+                <input type="text" id="filter-op" class="form-control form-control-sm" placeholder="např. 1491" oninput="filterData()">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold small">Od data:</label>
+                <input type="date" id="filter-from" class="form-control form-control-sm" value="2026-01-01" onchange="loadData()">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-bold small">Do data:</label>
+                <input type="date" id="filter-to" class="form-control form-control-sm" value="2026-12-31" onchange="loadData()">
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex gap-3 small fw-bold">
+            <span class="d-flex align-items-center gap-1"><span class="badge" style="background:var(--color-i);">I</span> Iniciační</span>
+            <span class="d-flex align-items-center gap-1"><span class="badge" style="background:var(--color-l);">L</span> Limitovaný</span>
+            <span class="d-flex align-items-center gap-1"><span class="badge" style="background:var(--color-u);">U</span> Způsobilý</span>
+            <span class="d-flex align-items-center gap-1"><span class="badge" style="background:var(--color-o);">O</span> Operativní</span>
+        </div>
+        <small id="countSummary" class="text-muted"></small>
+    </div>
+
+    <div id="grid-container" class="grid">
+        <!-- Zde se dynamicky vykreslí dlaždice -->
+    </div>
+
+    <!-- MODAL PRO NASTAVENÍ LIMITŮ -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Nastavení limitů způsobilosti (sekundy)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Úroveň I (Iniciační - do):</label>
+                        <input type="number" id="inputI" class="form-control" value="7200">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Úroveň L (Limitovaný - do):</label>
+                        <input type="number" id="inputL" class="form-control" value="144000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Úroveň U (Způsobilý - od):</label>
+                        <input type="number" id="inputU" class="form-control" value="288000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Úroveň O (Operativní - od):</label>
+                        <input type="number" id="inputO" class="form-control" value="1728000">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušit</button>
+                    <button type="button" class="btn btn-primary" onclick="saveSettings()">Uložit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let thresholds = JSON.parse(localStorage.getItem('polyvalence_thresholds')) || {
+            I: 7200,
+            L: 144000,
+            U: 288000,
+            O: 1728000
+        };
+
+        let allRecords = [];
+
+        async function loadData() {
+            const from = document.getElementById('filter-from').value;
+            const to = document.getElementById('filter-to').value;
+
+            try {
+                const response = await fetch(`/api/polyvalence-data?from=${from}&to=${to}`);
+                const data = await response.json();
+                allRecords = data.records || [];
+                filterData();
+            } catch (err) {
+                console.error("Chyba při načítání dat:", err);
+                alert("Nepodařilo se načíst data ze serveru.");
+            }
+        }
+
+        function getCategory(seconds) {
+            if (seconds >= thresholds.O) return 'o';
+            if (seconds >= thresholds.U) return 'u';
+            if (seconds >= thresholds.I) return 'l';
+            return 'i';
+        }
+
+        function filterData() {
+            const opFilter = document.getElementById('filter-op').value.trim().toLowerCase();
+            const container = document.getElementById('grid-container');
+            container.innerHTML = '';
+
+            const filtered = allRecords.filter(item => {
+                if (opFilter && !String(item.op).toLowerCase().includes(opFilter)) return false;
+                return true;
+            });
+
+            document.getElementById('countSummary').innerText = `Zobrazeno ${filtered.length} záznamů`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted w-100 py-4" style="grid-column: 1/-1;">Žádná data k zobrazení.</p>';
+                return;
+            }
+
+            filtered.forEach(item => {
+                const sec = item.time_seconds || 0;
+                const hours = (sec / 3600).toFixed(1);
+                const cat = getCategory(sec);
+
+                const card = document.createElement('div');
+                card.className = `poly-card cat-${cat}`;
+                card.innerHTML = `
+                    <div class="badge-circle ${cat}">${cat.toUpperCase()}</div>
+                    <div class="flex-grow-1 overflow-hidden">
+                        <div class="fw-bold text-truncate" title="${item.label}">${item.label}</div>
+                        <small class="text-muted d-block">Operátor: <strong>${item.op}</strong></small>
+                        <small class="text-secondary">Čas: ${sec.toLocaleString()} s (${hours} h)</small>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function openSettings() {
+            document.getElementById('inputI').value = thresholds.I;
+            document.getElementById('inputL').value = thresholds.L;
+            document.getElementById('inputU').value = thresholds.U;
+            document.getElementById('inputO').value = thresholds.O;
+            new bootstrap.Modal(document.getElementById('settingsModal')).show();
+        }
+
+        function saveSettings() {
+            thresholds.I = parseInt(document.getElementById('inputI').value) || 7200;
+            thresholds.L = parseInt(document.getElementById('inputL').value) || 144000;
+            thresholds.U = parseInt(document.getElementById('inputU').value) || 288000;
+            thresholds.O = parseInt(document.getElementById('inputO').value) || 1728000;
+
+            localStorage.setItem('polyvalence_thresholds', JSON.stringify(thresholds));
+            bootstrap.Modal.getInstance(document.getElementById('settingsModal')).hide();
+            filterData();
+        }
+
+        window.onload = () => {
+            loadData();
+        };
+    </script>
+</body>
+</html>

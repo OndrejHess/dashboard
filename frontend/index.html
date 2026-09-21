@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Výrobní Dashboard - MES & SCADA Portal</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --primary: #1976d2;
+            --color-i: #fbc02d;
+            --color-l: #f57c00;
+            --color-u: #388e3c;
+            --color-o: #7b1fa2;
+        }
+        body {
+            background-color: var(--bg-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-main);
+        }
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .card {
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background-color: #ffffff;
+            font-weight: bold;
+            border-bottom: 1px solid #eef2f5;
+        }
+        .clickable-row {
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+        .clickable-row:hover {
+            background-color: #e2e8f0 !important;
+        }
+        .sortable {
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .sortable:hover {
+            background-color: #e9ecef;
+        }
+        .sort-icon {
+            font-size: 0.8rem;
+            margin-left: 4px;
+            color: #6c757d;
+        }
+        /* Polyvalence styling */
+        .poly-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 15px;
+        }
+        .poly-card {
+            background: var(--card-bg);
+            border: 1px solid #dcdcdc;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-left-width: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+        .poly-card.cat-i { border-left-color: var(--color-i); }
+        .poly-card.cat-l { border-left-color: var(--color-l); }
+        .poly-card.cat-u { border-left-color: var(--color-u); }
+        .poly-card.cat-o { border-left-color: var(--color-o); }
+        .poly-badge {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 15px;
+            flex-shrink: 0;
+        }
+        .poly-badge.i { background: var(--color-i); }
+        .poly-badge.l { background: var(--color-l); }
+        .poly-badge.u { background: var(--color-u); }
+        .poly-badge.o { background: var(--color-o); }
+    </style>
+</head>
+<body class="p-3">
+
+    <!-- Horní navigace -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark rounded mb-4 px-3 shadow-sm">
+        <div class="container-fluid">
+            <span class="navbar-brand text-white">🏭 Výrobní Dashboard (MES & SCADA)</span>
+            <div class="d-flex align-items-center gap-2">
+                <span id="liveStatusBadge" class="badge bg-success">● SQL Server Online</span>
+                <button class="btn btn-outline-light btn-sm" onclick="refreshCurrentTab()">🔄 Obnovit</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div id="errorAlert" class="alert alert-danger d-none" role="alert"></div>
+
+        <!-- Globální filtr bar pro výrobu a data -->
+        <div class="card p-3 mb-4" id="mainFilterCard">
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small">Od data:</label>
+                    <input type="date" id="startDate" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small">Do data:</label>
+                    <input type="date" id="endDate" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small">Směna:</label>
+                    <select id="shiftSelect" class="form-select form-select-sm">
+                        <option value="">Všechny směny</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label fw-bold small">Dílna:</label>
+                    <select id="workshopSelect" class="form-select form-select-sm" onchange="onFieldChange()">
+                        <option value="">Všechny dílny</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end gap-2">
+                    <button class="btn btn-primary btn-sm w-50 fw-bold" onclick="applyFilters()">🔍 Filtrovat</button>
+                    <button class="btn btn-outline-secondary btn-sm w-50" onclick="resetFilters()">↺ Reset</button>
+                </div>
+            </div>
+
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">Stroje (Multi-select):</label>
+                    <select id="machineSelect" class="form-select form-select-sm" multiple style="height: 90px;" onchange="onFieldChange()">
+                        <option value="ALL" selected>-- Všechny stroje --</option>
+                    </select>
+                    <small class="text-muted" style="font-size:0.75rem;">Ctrl + klik pro výběr více položek</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">Formy / Nástroje (Multi-select):</label>
+                    <select id="moldSelect" class="form-select form-select-sm" multiple style="height: 90px;" onchange="onFieldChange()">
+                        <option value="ALL" selected>-- Všechny formy --</option>
+                    </select>
+                    <small class="text-muted" style="font-size:0.75rem;">Filtrováno dle strojů a dílny</small>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold small">Výrobek (Multi-select):</label>
+                    <select id="articleSelect" class="form-select form-select-sm" multiple style="height: 90px;">
+                        <option value="ALL" selected>-- Všechny výrobky --</option>
+                    </select>
+                    <small class="text-muted" style="font-size:0.75rem;">Název - Kód výrobku</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigační záložky -->
+        <ul class="nav nav-pills mb-4 gap-2" id="dashboardTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold" id="tab-production-btn" data-bs-toggle="pill" data-bs-target="#tab-production" type="button" role="tab">📊 Výroba & OEE</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="tab-downtimes-btn" data-bs-toggle="pill" data-bs-target="#tab-downtimes" type="button" role="tab">⏱️ Prostoje & Vady</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="tab-energy-btn" data-bs-toggle="pill" data-bs-target="#tab-energy" type="button" role="tab" onclick="loadEnergyTab()">⚡ Energetika & Ztráty</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="tab-polyvalence-btn" data-bs-toggle="pill" data-bs-target="#tab-polyvalence" type="button" role="tab" onclick="loadPolyvalenceTab()">👤 Polyvalence (ILUO)</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="tab-orders-btn" data-bs-toggle="pill" data-bs-target="#tab-orders" type="button" role="tab" onclick="loadOrdersTab()">📋 SAP Zakázky (GPAO)</button>
+            </li>
+        </ul>
+
+        <!-- Obsah záložek -->
+        <div class="tab-content" id="dashboardTabsContent">
+            
+            <!-- ZÁLOŽKA 1: VÝROBA & OEE -->
+            <div class="tab-pane fade show active" id="tab-production" role="tabpanel">
+                <!-- KPI Celkem -->
+                <div class="row text-center mb-4" id="kpiSummaryRow" style="display: none;">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white p-3">
+                            <small class="text-uppercase fw-semibold">Celkem vyrobeno</small>
+                            <h3 class="my-1" id="summaryVyrobeno">0 Ks</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white p-3">
+                            <small class="text-uppercase fw-semibold">Celkem zmetky</small>
+                            <h3 class="my-1" id="summaryZmetky">0 Ks</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-dark p-3">
+                            <small class="text-uppercase fw-semibold">Zmetkovitost</small>
+                            <h3 class="my-1" id="summaryZmetkovitost">0 %</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white p-3">
+                            <small class="text-uppercase fw-semibold">Průměrné OEE</small>
+                            <h3 class="my-1" id="summaryOEE">0 %</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabulky strojů a forem -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>🚜 Přehled lisů a strojů (TOP 100)</span>
+                                <small class="text-muted fw-normal">Kliknutím vyfiltrujete lis</small>
+                            </div>
+                            <div class="card-body table-responsive" style="max-height: 450px;">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="sortable" onclick="sortMachines('kod')">Stroj <span id="sort-machines-kod" class="sort-icon">↕</span></th>
+                                            <th class="text-end sortable" onclick="sortMachines('vyrobeno')">Vyrobeno (ks) <span id="sort-machines-vyrobeno" class="sort-icon">▼</span></th>
+                                            <th class="text-end sortable" onclick="sortMachines('zmetky')">Zmetky <span id="sort-machines-zmetky" class="sort-icon">↕</span></th>
+                                            <th class="text-end sortable" onclick="sortMachines('zmetkovitost')">Zmetkovitost <span id="sort-machines-zmetkovitost" class="sort-icon">↕</span></th>
+                                            <th class="text-end sortable" onclick="sortMachines('oee')">OEE <span id="sort-machines-oee" class="sort-icon">↕</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="machinesTableBody">
+                                        <tr><td colspan="5" class="text-center text-muted">Načítám stroje...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>🧩 Rozdělení po formách / nástrojích (TOP 30)</span>
+                                <small class="text-muted fw-normal">Kliknutím vyfiltrujete formu</small>
+                            </div>
+                            <div class="card-body table-responsive" style="max-height: 450px;">
+                                <table class="table table-hover align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="sortable" onclick="sortMolds('kod')">Forma <span id="sort-molds-kod" class="sort-icon">↕</span></th>
+                                            <th class="text-end sortable" onclick="sortMolds('vyrobeno')">Vyrobeno (ks) <span id="sort-molds-vyrobeno" class="sort-icon">▼</span></th>
+                                            <th class="text-end sortable" onclick="sortMolds('zmetky')">Zmetky <span id="sort-molds-zmetky" class="sort-icon">↕</span></th>
+                                            <th class="text-end sortable" onclick="sortMolds('zmetkovitost')">Zmetkovitost <span id="sort-molds-zmetkovitost" class="sort-icon">↕</span></th>
+                                            <th class="text-end sortable" onclick="sortMolds('oee')">OEE <span id="sort-molds-oee" class="sort-icon">↕</span></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="moldsTableBody">
+                                        <tr><td colspan="5" class="text-center text-muted">Načítám formy...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ZÁLOŽKA 2: PROSTOJE & VADY -->
+            <div class="tab-pane fade" id="tab-downtimes" role="tabpanel">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">⏱️ Pareto prostojů v hodinách (SAVEPRO)</div>
+                            <div class="card-body">
+                                <canvas id="downtimeChart" height="160"></canvas>
+                                <div class="table-responsive mt-3" style="max-height: 260px;">
+                                    <table class="table table-sm table-striped align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="sortable" onclick="sortDowntimes('duvod')">Důvod prostoje <span id="sort-downtimes-duvod" class="sort-icon">↕</span></th>
+                                                <th class="text-end sortable" onclick="sortDowntimes('trvani')">Trvání (hod) <span id="sort-downtimes-trvani" class="sort-icon">▼</span></th>
+                                                <th class="text-end sortable" onclick="sortDowntimes('zastaveni')">Zastavení <span id="sort-downtimes-zastaveni" class="sort-icon">↕</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="downtimesTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">⚠️ Pareto zmetků podle typů vad (SAVEPRO)</div>
+                            <div class="card-body">
+                                <canvas id="scrapChart" height="160"></canvas>
+                                <div class="table-responsive mt-3" style="max-height: 260px;">
+                                    <table class="table table-sm table-striped align-middle">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th class="sortable" onclick="sortScraps('vada')">Typ vady <span id="sort-scraps-vada" class="sort-icon">↕</span></th>
+                                                <th class="text-end sortable" onclick="sortScraps('zmetky')">Počet zmetků (ks) <span id="sort-scraps-zmetky" class="sort-icon">▼</span></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="scrapsTableBody"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ZÁLOŽKA 3: ENERGETIKA & ZTRÁTY -->
+            <div class="tab-pane fade" id="tab-energy" role="tabpanel">
+                <div class="row mb-4">
+                    <!-- Live spotřeba KPI -->
+                    <div class="col-md-4">
+                        <div class="card bg-dark text-white p-3">
+                            <small class="text-uppercase text-secondary fw-semibold">Aktuální příkon lisovny (Live)</small>
+                            <h2 class="my-1 text-warning" id="liveTotalKw">-- kW</h2>
+                            <small id="liveTimestamp" class="text-muted">Aktualizace: --</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-info text-white p-3">
+                            <small class="text-uppercase fw-semibold">Aktivní lisy s odběrem</small>
+                            <h2 class="my-1" id="liveActiveMacs">-- / --</h2>
+                            <small>Stroje s příkonem > 1 kW</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-danger text-white p-3">
+                            <small class="text-uppercase fw-semibold">Ztrátová spotřeba (stojící lisy)</small>
+                            <h2 class="my-1" id="energyAlertsCount">--</h2>
+                            <small>Zjištěné incidenty a alerty</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Okamžitý odběr lisů -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <span>⚡ Aktuální odběr strojů (kW)</span>
+                                <button class="btn btn-sm btn-outline-primary" onclick="loadLiveEnergy()">Obnovit live</button>
+                            </div>
+                            <div class="card-body table-responsive" style="max-height: 400px;">
+                                <table class="table table-hover table-striped align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Stroj</th>
+                                            <th>Čas měření</th>
+                                            <th class="text-end">Příkon (kW)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="liveEnergyTableBody">
+                                        <tr><td colspan="3" class="text-center text-muted">Načítám živá data...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Spotřeba stojících lisů -->
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <span>🛑 Spotřeba stojících lisů (dbo.PVL_CONSO_ENERGIE_ALERTES_EQUIPE)</span>
+                            </div>
+                            <div class="card-body table-responsive" style="max-height: 400px;">
+                                <table class="table table-hover table-striped align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Stroj</th>
+                                            <th>Směna</th>
+                                            <th>Začátek alertu</th>
+                                            <th>Konec alertu</th>
+                                            <th class="text-end">Ztráta (kWh)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="energyAlertsTableBody">
+                                        <tr><td colspan="5" class="text-center text-muted">Načítám alerty...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ZÁLOŽKA 4: POLYVALENCE (ILUO) -->
+            <div class="tab-pane fade" id="tab-polyvalence" role="tabpanel">
+                <div class="card p-3 mb-4">
+                    <div class="row g-3 align-items-center">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold small">Filtrovat dle čísla operátora:</label>
+                            <input type="text" id="poly-filter-op" class="form-control form-control-sm" placeholder="např. 1491" oninput="filterPolyData()">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Od data:</label>
+                            <input type="date" id="poly-from" class="form-control form-control-sm" value="2026-01-01" onchange="loadPolyData()">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small">Do data:</label>
+                            <input type="date" id="poly-to" class="form-control form-control-sm" value="2026-12-31" onchange="loadPolyData()">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end gap-2">
+                            <button class="btn btn-outline-secondary btn-sm w-100" onclick="openPolySettings()">⚙️ Limity ILUO</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div class="d-flex gap-3 small fw-bold">
+                        <span class="d-flex align-items-center gap-1"><span class="badge" style="background:var(--color-i);">I</span> Iniciační (&lt; 2 hod)</span>
+                        <span class="d-flex align-items-center gap-1"><span class="badge" style="background:var(--color-l);">L</span> Limitovaný (&lt; 40 hod)</span>
+                        <span class="d-flex align-items-center gap-1"><span class="badge" style="background:var(--color-u);">U</span> Způsobilý (&ge; 80 hod)</span>
+                        <span class="d-flex align-items-center gap-1"><span class="badge" style="background:var(--color-o);">O</span> Operativní (&ge; 480 hod)</span>
+                    </div>
+                    <small id="polyCountLabel" class="text-muted"></small>
+                </div>
+
+                <div id="poly-grid-container" class="poly-grid">
+                    <!-- Polyvalence cards -->
+                </div>
+            </div>
+
+            <!-- ZÁLOŽKA 5: SAP ZAKÁZKY (GPAO) -->
+            <div class="tab-pane fade" id="tab-orders" role="tabpanel">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>📋 Výrobní příkazy SAP & Plnění výroby (GPAO_PVL_SAP.dbo.OFGPAO)</span>
+                        <button class="btn btn-sm btn-outline-primary" onclick="loadOrdersTab()">Obnovit zakázky</button>
+                    </div>
+                    <div class="card-body table-responsive" style="max-height: 500px;">
+                        <table class="table table-hover table-striped align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Příkaz (OF)</th>
+                                    <th>Stroj</th>
+                                    <th>Forma</th>
+                                    <th class="text-end">Plánováno zdvihů</th>
+                                    <th class="text-end">Vyrobeno ks (SAP)</th>
+                                    <th class="text-end">Plnění</th>
+                                    <th>Stav</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ordersTableBody">
+                                <tr><td colspan="7" class="text-center text-muted">Načítám SAP zakázky...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Modal pro nastavení limitů Polyvalence -->
+    <div class="modal fade" id="polySettingsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">⚙️ Nastavení limitů Polyvalence (sekundy)</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Úroveň I (Iniciační - do):</label>
+                        <input type="number" id="polyInputI" class="form-control" value="7200">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Úroveň L (Limitovaný - do):</label>
+                        <input type="number" id="polyInputL" class="form-control" value="144000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Úroveň U (Způsobilý - od):</label>
+                        <input type="number" id="polyInputU" class="form-control" value="288000">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Úroveň O (Operativní - od):</label>
+                        <input type="number" id="polyInputO" class="form-control" value="1728000">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušit</button>
+                    <button type="button" class="btn btn-primary" onclick="savePolySettings()">Uložit nastavení</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let downtimeChartInstance = null;
+        let scrapChartInstance = null;
+
+        let currentMachinesData = [];
+        let machineSortCol = 'vyrobeno';
+        let machineSortAsc = false;
+
+        let currentMoldsData = [];
+        let moldSortCol = 'vyrobeno';
+        let moldSortAsc = false;
+
+        let currentDowntimesData = [];
+        let downtimeSortCol = 'trvani';
+        let downtimeSortAsc = false;
+
+        let currentScrapsData = [];
+        let scrapSortCol = 'zmetky';
+        let scrapSortAsc = false;
+
+        let allPolyRecords = [];
+        let polyThresholds = JSON.parse(localStorage.getItem('polyvalence_thresholds')) || {
+            I: 7200,
+            L: 144000,
+            U: 288000,
+            O: 1728000
+        };
+
+        function setYesterdayAsDefault() {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yyyy = yesterday.getFullYear();
+            const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+            const dd = String(yesterday.getDate()).padStart(2, '0');
+            const formatted = `${yyyy}-${mm}-${dd}`;
+            
+            document.getElementById('startDate').value = formatted;
+            document.getElementById('endDate').value = formatted;
+        }
+
+        function showError(msg) {
+            const errDiv = document.getElementById('errorAlert');
+            errDiv.classList.remove('d-none');
+            errDiv.innerText = msg;
+        }
+
+        function clearError() {
+            document.getElementById('errorAlert').classList.add('d-none');
+        }
+
+        function getSelectedValues(selectElement) {
+            const result = [];
+            if (!selectElement) return result;
+            const options = selectElement.options;
+            for (let i = 0; i < options.length; i++) {
+                if (options[i].selected && options[i].value !== "" && options[i].value !== "ALL") {
+                    result.push(options[i].value);
+                }
+            }
+            if (result.length === 0) return ["ALL"];
+            return result;
+        }
+
+        function getFilterPayload() {
+            return {
+                start_date: document.getElementById('startDate').value,
+                end_date: document.getElementById('endDate').value,
+                shift: document.getElementById('shiftSelect').value,
+                workshop: document.getElementById('workshopSelect').value,
+                machines: getSelectedValues(document.getElementById('machineSelect')),
+                molds: getSelectedValues(document.getElementById('moldSelect')),
+                articles: getSelectedValues(document.getElementById('articleSelect'))
+            };
+        }
+
+        async function fetchFilters(isInitial = false) {
+            try {
+                const res = await fetch('/api/filters', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(getFilterPayload())
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    if (isInitial) {
+                        const shiftSel = document.getElementById('shiftSelect');
+                        shiftSel.innerHTML = '<option value="">Všechny směny</option>';
+                        data.shifts.forEach(s => {
+                            shiftSel.innerHTML += `<option value="${s}">${s}</option>`;
+                        });
+
+                        const workshopSel = document.getElementById('workshopSelect');
+                        workshopSel.innerHTML = '<option value="">Všechny dílny</option>';
+                        data.workshops.forEach(w => {
+                            workshopSel.innerHTML += `<option value="${w}">${w}</option>`;
+                        });
+
+                        const macSel = document.getElementById('machineSelect');
+                        macSel.innerHTML = `<option value="ALL">-- Všechny stroje --</option>`;
+                        data.machines.forEach(m => {
+                            const kod = m.REFMAC || m.refmac;
+                            const nazev = m.LIBMAC || m.libmac || kod;
+                            macSel.innerHTML += `<option value="${kod}">${kod} - ${nazev}</option>`;
+                        });
+                    }
+
+                    const moldSel = document.getElementById('moldSelect');
+                    const currentMolds = getSelectedValues(moldSel);
+                    const isAllMolds = currentMolds.includes("ALL");
+                    moldSel.innerHTML = `<option value="ALL" ${isAllMolds ? 'selected' : ''}>-- Všechny formy --</option>`;
+                    data.molds.forEach(o => {
+                        const kod = o.REFOUT || o.refout;
+                        const nazev = o.LIBOUT || o.libout || kod;
+                        const isSelected = !isAllMolds && currentMolds.includes(kod) ? 'selected' : '';
+                        moldSel.innerHTML += `<option value="${kod}" ${isSelected}>${kod} - ${nazev}</option>`;
+                    });
+
+                    const artSel = document.getElementById('articleSelect');
+                    const currentArts = getSelectedValues(artSel);
+                    const isAllArts = currentArts.includes("ALL");
+                    artSel.innerHTML = `<option value="ALL" ${isAllArts ? 'selected' : ''}>-- Všechny výrobky --</option>`;
+                    if (data.articles) {
+                        data.articles.forEach(a => {
+                            const kod = a.REFPROD || a.refprod;
+                            const nazev = a.LIBPROD || a.libprod || kod;
+                            const isSelected = !isAllArts && currentArts.includes(kod) ? 'selected' : '';
+                            artSel.innerHTML += `<option value="${kod}" ${isSelected}>${nazev} - ${kod}</option>`;
+                        });
+                    }
+                }
+            } catch (err) {
+                showError("Chyba při načítání filtrů: " + err);
+            }
+        }
+
+        function onFieldChange() {
+            fetchFilters(false);
+        }
+
+        function filterByMachineClick(kodStroje) {
+            const macSel = document.getElementById('machineSelect');
+            for (let i = 0; i < macSel.options.length; i++) {
+                macSel.options[i].selected = (macSel.options[i].value === kodStroje);
+            }
+            fetchFilters(false);
+            loadProductionAndDowntimes();
+        }
+
+        function filterByMoldClick(kodFormy) {
+            const moldSel = document.getElementById('moldSelect');
+            for (let i = 0; i < moldSel.options.length; i++) {
+                moldSel.options[i].selected = (moldSel.options[i].value === kodFormy);
+            }
+            fetchFilters(false);
+            loadProductionAndDowntimes();
+        }
+
+        // --- ŘAZENÍ A VYKRESLENÍ STROJŮ ---
+        function sortMachinesDataInMemory() {
+            const col = machineSortCol;
+            currentMachinesData.sort((a, b) => {
+                let valA, valB;
+                if (col === 'kod') {
+                    valA = (a.KodStroje || a.kodstroje || '').toString();
+                    valB = (b.KodStroje || b.kodstroje || '').toString();
+                    return machineSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                } else if (col === 'vyrobeno') {
+                    valA = Number(a.Vyrobeno_Ks || a.vyrobeno_ks || 0);
+                    valB = Number(b.Vyrobeno_Ks || b.vyrobeno_ks || 0);
+                } else if (col === 'zmetky') {
+                    valA = Number(a.Zmetky_Ks || a.zmetky_ks || 0);
+                    valB = Number(b.Zmetky_Ks || b.zmetky_ks || 0);
+                } else if (col === 'zmetkovitost') {
+                    valA = Number(a.Zmetkovitost_Percent || a.zmetkovitost_percent || 0);
+                    valB = Number(b.Zmetkovitost_Percent || b.zmetkovitost_percent || 0);
+                } else if (col === 'oee') {
+                    valA = Number(a.OEE_Percent || a.oee_percent || 0);
+                    valB = Number(b.OEE_Percent || b.oee_percent || 0);
+                }
+                return machineSortAsc ? valA - valB : valB - valA;
+            });
+        }
+
+        function renderMachinesTable() {
+            const tbody = document.getElementById('machinesTableBody');
+            tbody.innerHTML = '';
+            if (currentMachinesData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Žádné stroje pro vybraný filtr.</td></tr>';
+                return;
+            }
+            currentMachinesData.forEach(row => {
+                const kod = row.KodStroje || row.kodstroje || '';
+                const nazev = row.NazevStroje || row.nazevstroje || '';
+                const vyr = row.Vyrobeno_Ks || row.vyrobeno_ks || 0;
+                const zmet = row.Zmetky_Ks || row.zmetky_ks || 0;
+                const zmetPct = Number(row.Zmetkovitost_Percent || row.zmetkovitost_percent || 0).toFixed(2);
+                const oee = Number(row.OEE_Percent || row.oee_percent || 0).toFixed(2);
+
+                const oeeBadgeClass = oee >= 75 ? 'bg-success' : (oee >= 60 ? 'bg-warning text-dark' : 'bg-danger');
+
+                tbody.innerHTML += `
+                    <tr class="clickable-row" onclick="filterByMachineClick('${kod}')" title="Klikněte pro vyfiltrování lisu ${kod}">
+                        <td><strong>${kod}</strong> <br><small class="text-muted">${nazev}</small></td>
+                        <td class="text-end">${vyr.toLocaleString()}</td>
+                        <td class="text-end text-danger">${zmet.toLocaleString()}</td>
+                        <td class="text-end"><span class="badge bg-light text-dark border">${zmetPct}%</span></td>
+                        <td class="text-end"><span class="badge ${oeeBadgeClass}">${oee}%</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function sortMachines(col) {
+            if (machineSortCol === col) machineSortAsc = !machineSortAsc;
+            else { machineSortCol = col; machineSortAsc = false; }
+            sortMachinesDataInMemory();
+            renderMachinesTable();
+        }
+
+        async function loadMachines() {
+            try {
+                const res = await fetch('/api/kpi/machines', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(getFilterPayload())
+                });
+                const json = await res.json();
+                if (json.status === 'success' && json.data) {
+                    currentMachinesData = json.data;
+                    sortMachinesDataInMemory();
+                    renderMachinesTable();
+
+                    if (json.summary) {
+                        document.getElementById('kpiSummaryRow').style.display = 'flex';
+                        document.getElementById('summaryVyrobeno').innerText = json.summary.Vyrobeno_Ks.toLocaleString() + ' Ks';
+                        document.getElementById('summaryZmetky').innerText = json.summary.Zmetky_Ks.toLocaleString() + ' Ks';
+                        document.getElementById('summaryZmetkovitost').innerText = Number(json.summary.Zmetkovitost_Percent).toFixed(2) + ' %';
+                        document.getElementById('summaryOEE').innerText = Number(json.summary.OEE_Percent).toFixed(2) + ' %';
+                    }
+                }
+            } catch (err) {
+                showError("Chyba načítání strojů: " + err);
+            }
+        }
+
+        // --- ŘAZENÍ A VYKRESLENÍ FOREM ---
+        function sortMoldsDataInMemory() {
+            const col = moldSortCol;
+            currentMoldsData.sort((a, b) => {
+                let valA, valB;
+                if (col === 'kod') {
+                    valA = (a.KodFormy || a.kodformy || '').toString();
+                    valB = (b.KodFormy || b.kodformy || '').toString();
+                    return moldSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                } else if (col === 'vyrobeno') {
+                    valA = Number(a.Vyrobeno_Ks || a.vyrobeno_ks || 0);
+                    valB = Number(b.Vyrobeno_Ks || b.vyrobeno_ks || 0);
+                } else if (col === 'zmetky') {
+                    valA = Number(a.Zmetky_Ks || a.zmetky_ks || 0);
+                    valB = Number(b.Zmetky_Ks || b.zmetky_ks || 0);
+                } else if (col === 'zmetkovitost') {
+                    valA = Number(a.Zmetkovitost_Percent || a.zmetkovitost_percent || 0);
+                    valB = Number(b.Zmetkovitost_Percent || b.zmetkovitost_percent || 0);
+                } else if (col === 'oee') {
+                    valA = Number(a.OEE_Percent || a.oee_percent || 0);
+                    valB = Number(b.OEE_Percent || b.oee_percent || 0);
+                }
+                return moldSortAsc ? valA - valB : valB - valA;
+            });
+        }
+
+        function renderMoldsTable() {
+            const tbody = document.getElementById('moldsTableBody');
+            tbody.innerHTML = '';
+            if (currentMoldsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Žádné formy pro vybraný filtr.</td></tr>';
+                return;
+            }
+            currentMoldsData.forEach(row => {
+                const kod = row.KodFormy || row.kodformy || '';
+                const nazev = row.NazevFormy || row.nazevformy || '';
+                const vyr = row.Vyrobeno_Ks || row.vyrobeno_ks || 0;
+                const zmet = row.Zmetky_Ks || row.zmetky_ks || 0;
+                const zmetPct = Number(row.Zmetkovitost_Percent || row.zmetkovitost_percent || 0).toFixed(2);
+                const oee = Number(row.OEE_Percent || row.oee_percent || 0).toFixed(2);
+
+                tbody.innerHTML += `
+                    <tr class="clickable-row" onclick="filterByMoldClick('${kod}')" title="Klikněte pro vyfiltrování formy ${kod}">
+                        <td><strong>${kod}</strong> <br><small class="text-muted">${nazev}</small></td>
+                        <td class="text-end">${vyr.toLocaleString()}</td>
+                        <td class="text-end text-danger">${zmet.toLocaleString()}</td>
+                        <td class="text-end"><span class="badge bg-light text-dark border">${zmetPct}%</span></td>
+                        <td class="text-end"><span class="badge bg-success">${oee}%</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function sortMolds(col) {
+            if (moldSortCol === col) moldSortAsc = !moldSortAsc;
+            else { moldSortCol = col; moldSortAsc = false; }
+            sortMoldsDataInMemory();
+            renderMoldsTable();
+        }
+
+        async function loadMolds() {
+            try {
+                const res = await fetch('/api/kpi/molds', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(getFilterPayload())
+                });
+                const json = await res.json();
+                if (json.status === 'success' && json.data) {
+                    currentMoldsData = json.data;
+                    sortMoldsDataInMemory();
+                    renderMoldsTable();
+                }
+            } catch (err) {
+                showError("Chyba načítání forem: " + err);
+            }
+        }
+
+        // --- PROSTOJE A VADY ---
+        function sortDowntimesDataInMemory() {
+            const col = downtimeSortCol;
+            currentDowntimesData.sort((a, b) => {
+                if (col === 'duvod') {
+                    const valA = (a.DuvodProstoje || '').toString();
+                    const valB = (b.DuvodProstoje || '').toString();
+                    return downtimeSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                } else if (col === 'trvani') {
+                    return downtimeSortAsc ? a.Trvani_Hodin - b.Trvani_Hodin : b.Trvani_Hodin - a.Trvani_Hodin;
+                } else if (col === 'zastaveni') {
+                    return downtimeSortAsc ? a.Pocet_Zastaveni - b.Pocet_Zastaveni : b.Pocet_Zastaveni - a.Pocet_Zastaveni;
+                }
+            });
+        }
+
+        function renderDowntimesTable() {
+            const tbody = document.getElementById('downtimesTableBody');
+            tbody.innerHTML = '';
+            currentDowntimesData.forEach(row => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${row.DuvodProstoje}</td>
+                        <td class="text-end fw-bold text-danger">${Number(row.Trvani_Hodin).toFixed(2)} h</td>
+                        <td class="text-end">${row.Pocet_Zastaveni}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function sortDowntimes(col) {
+            if (downtimeSortCol === col) downtimeSortAsc = !downtimeSortAsc;
+            else { downtimeSortCol = col; downtimeSortAsc = false; }
+            sortDowntimesDataInMemory();
+            renderDowntimesTable();
+        }
+
+        async function loadDowntimes() {
+            try {
+                const res = await fetch('/api/kpi/downtimes', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(getFilterPayload())
+                });
+                const json = await res.json();
+                if (json.status === 'success' && json.data) {
+                    currentDowntimesData = json.data;
+                    sortDowntimesDataInMemory();
+                    renderDowntimesTable();
+
+                    // Chart.js
+                    const labels = json.data.map(d => d.DuvodProstoje);
+                    const values = json.data.map(d => d.Trvani_Hodin);
+
+                    if (downtimeChartInstance) downtimeChartInstance.destroy();
+                    const ctx = document.getElementById('downtimeChart').getContext('2d');
+                    downtimeChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Trvání v hodinách',
+                                data: values,
+                                backgroundColor: 'rgba(220, 53, 69, 0.75)',
+                                borderColor: 'rgba(220, 53, 69, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+                }
+            } catch (err) {
+                showError("Chyba načítání prostojů: " + err);
+            }
+        }
+
+        function sortScrapsDataInMemory() {
+            const col = scrapSortCol;
+            currentScrapsData.sort((a, b) => {
+                if (col === 'vada') {
+                    const valA = (a.TypVady || '').toString();
+                    const valB = (b.TypVady || '').toString();
+                    return scrapSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                } else if (col === 'zmetky') {
+                    return scrapSortAsc ? a.Zmetky_Ks - b.Zmetky_Ks : b.Zmetky_Ks - a.Zmetky_Ks;
+                }
+            });
+        }
+
+        function renderScrapsTable() {
+            const tbody = document.getElementById('scrapsTableBody');
+            tbody.innerHTML = '';
+            currentScrapsData.forEach(row => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${row.TypVady}</td>
+                        <td class="text-end fw-bold text-danger">${Number(row.Zmetky_Ks).toLocaleString()} ks</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function sortScraps(col) {
+            if (scrapSortCol === col) scrapSortAsc = !scrapSortAsc;
+            else { scrapSortCol = col; scrapSortAsc = false; }
+            sortScrapsDataInMemory();
+            renderScrapsTable();
+        }
+
+        async function loadScraps() {
+            try {
+                const res = await fetch('/api/kpi/scraps', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(getFilterPayload())
+                });
+                const json = await res.json();
+                if (json.status === 'success' && json.data) {
+                    currentScrapsData = json.data;
+                    sortScrapsDataInMemory();
+                    renderScrapsTable();
+
+                    // Chart.js
+                    const labels = json.data.map(d => d.TypVady);
+                    const values = json.data.map(d => d.Zmetky_Ks);
+
+                    if (scrapChartInstance) scrapChartInstance.destroy();
+                    const ctx = document.getElementById('scrapChart').getContext('2d');
+                    scrapChartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Zmetky v kusech',
+                                data: values,
+                                backgroundColor: 'rgba(255, 193, 7, 0.75)',
+                                borderColor: 'rgba(255, 193, 7, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: { legend: { display: false } },
+                            scales: { y: { beginAtZero: true } }
+                        }
+                    });
+                }
+            } catch (err) {
+                showError("Chyba načítání zmetků: " + err);
+            }
+        }
+
+        // --- ENERGETIKA ---
+        async function loadLiveEnergy() {
+            try {
+                const res = await fetch('/api/kpi/energy-live');
+                const json = await res.json();
+                if (json.status === 'success') {
+                    document.getElementById('liveTotalKw').innerText = `${json.total_kw.toLocaleString()} kW`;
+                    document.getElementById('liveTimestamp').innerText = `Aktualizace: ${json.timestamp}`;
+                    document.getElementById('liveActiveMacs').innerText = `${json.active_machines_count} / ${json.total_machines_count}`;
+
+                    const tbody = document.getElementById('liveEnergyTableBody');
+                    tbody.innerHTML = '';
+                    json.data.forEach(r => {
+                        const kwBadge = r.Vykon_kW > 1.0 ? 'text-success fw-bold' : 'text-muted';
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><strong>${r.Stroj}</strong></td>
+                                <td><small class="text-muted">${r.Timestamp}</small></td>
+                                <td class="text-end ${kwBadge}">${r.Vykon_kW} kW</td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (err) {
+                console.error("Chyba načítání live energií:", err);
+            }
+        }
+
+        async function loadEnergyAlerts() {
+            try {
+                const res = await fetch('/api/kpi/energy-alerts', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(getFilterPayload())
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    const tbody = document.getElementById('energyAlertsTableBody');
+                    tbody.innerHTML = '';
+                    document.getElementById('energyAlertsCount').innerText = `${json.data.length} incidentů`;
+
+                    if (json.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Žádné energetické alerty v tomto období.</td></tr>';
+                        return;
+                    }
+
+                    json.data.slice(0, 50).forEach(r => {
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><strong>${r.BILOFEQU_REFMAC}</strong></td>
+                                <td>${r.EQUI_REFEQUIPE || '-'}</td>
+                                <td><small>${r.BILOFEQU_DEBALERTE || '-'}</small></td>
+                                <td><small>${r.BILOFEQU_FINALERTE || '-'}</small></td>
+                                <td class="text-end text-danger fw-bold">${r.BILOFEQU_CONSO_KWH}</td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (err) {
+                console.error("Chyba načítání energetických alertů:", err);
+            }
+        }
+
+        function loadEnergyTab() {
+            loadLiveEnergy();
+            loadEnergyAlerts();
+        }
+
+        // --- POLYVALENCE ---
+        function getPolyCategory(sec) {
+            if (sec >= polyThresholds.O) return 'o';
+            if (sec >= polyThresholds.U) return 'u';
+            if (sec >= polyThresholds.I) return 'l';
+            return 'i';
+        }
+
+        function filterPolyData() {
+            const op = document.getElementById('poly-filter-op').value.trim().toLowerCase();
+            const container = document.getElementById('poly-grid-container');
+            container.innerHTML = '';
+
+            const filtered = allPolyRecords.filter(r => {
+                if (op && !String(r.op).toLowerCase().includes(op)) return false;
+                return true;
+            });
+
+            document.getElementById('polyCountLabel').innerText = `Zobrazeno ${filtered.length} záznamů kvalifikace`;
+
+            if (filtered.length === 0) {
+                container.innerHTML = '<p class="text-center text-muted w-100 py-4">Žádná data pro zadané filtry operátora.</p>';
+                return;
+            }
+
+            filtered.forEach(item => {
+                const sec = item.time_seconds || 0;
+                const hours = (sec / 3600).toFixed(1);
+                const cat = getPolyCategory(sec);
+
+                const card = document.createElement('div');
+                card.className = `poly-card cat-${cat}`;
+                card.innerHTML = `
+                    <div class="poly-badge ${cat}">${cat.toUpperCase()}</div>
+                    <div class="flex-grow-1 overflow-hidden">
+                        <div class="fw-bold text-truncate" title="${item.label}">${item.label}</div>
+                        <small class="text-muted d-block">Operátor: <strong>${item.op}</strong></small>
+                        <small class="text-secondary">${hours} hod (${sec.toLocaleString()} s)</small>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        async function loadPolyData() {
+            const from = document.getElementById('poly-from').value;
+            const to = document.getElementById('poly-to').value;
+            try {
+                const res = await fetch(`/api/polyvalence-data?from=${from}&to=${to}`);
+                const json = await res.json();
+                allPolyRecords = json.records || [];
+                filterPolyData();
+            } catch (err) {
+                console.error("Chyba načítání polyvalence:", err);
+            }
+        }
+
+        function loadPolyvalenceTab() {
+            if (allPolyRecords.length === 0) {
+                loadPolyData();
+            }
+        }
+
+        function openPolySettings() {
+            document.getElementById('polyInputI').value = polyThresholds.I;
+            document.getElementById('polyInputL').value = polyThresholds.L;
+            document.getElementById('polyInputU').value = polyThresholds.U;
+            document.getElementById('polyInputO').value = polyThresholds.O;
+            const modal = new bootstrap.Modal(document.getElementById('polySettingsModal'));
+            modal.show();
+        }
+
+        function savePolySettings() {
+            polyThresholds.I = parseInt(document.getElementById('polyInputI').value) || 7200;
+            polyThresholds.L = parseInt(document.getElementById('polyInputL').value) || 144000;
+            polyThresholds.U = parseInt(document.getElementById('polyInputU').value) || 288000;
+            polyThresholds.O = parseInt(document.getElementById('polyInputO').value) || 1728000;
+            localStorage.setItem('polyvalence_thresholds', JSON.stringify(polyThresholds));
+            bootstrap.Modal.getInstance(document.getElementById('polySettingsModal')).hide();
+            filterPolyData();
+        }
+
+        // --- SAP ZAKÁZKY ---
+        async function loadOrdersTab() {
+            try {
+                const res = await fetch('/api/orders/sap', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(getFilterPayload())
+                });
+                const json = await res.json();
+                const tbody = document.getElementById('ordersTableBody');
+                tbody.innerHTML = '';
+                if (json.status === 'success' && json.data) {
+                    if (json.data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Žádné zakázky k zobrazení.</td></tr>';
+                        return;
+                    }
+                    json.data.forEach(r => {
+                        const pct = Number(r.ProcentoSplneni || 0);
+                        const progressColor = pct >= 100 ? 'bg-success' : (pct >= 70 ? 'bg-primary' : 'bg-warning');
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><strong>${r.VyrobniPrikaz}</strong></td>
+                                <td>${r.Stroj} <br><small class="text-muted">${r.NazevStroje}</small></td>
+                                <td>${r.Forma} <br><small class="text-muted">${r.NazevFormy}</small></td>
+                                <td class="text-end">${Number(r.Planovano_Zdvihu).toLocaleString()}</td>
+                                <td class="text-end fw-bold">${Number(r.Vyrobeno_Ks).toLocaleString()}</td>
+                                <td class="text-end" style="width: 140px;">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="progress flex-grow-1" style="height: 8px;">
+                                            <div class="progress-bar ${progressColor}" style="width: ${Math.min(pct, 100)}%;"></div>
+                                        </div>
+                                        <small class="fw-bold">${pct}%</small>
+                                    </div>
+                                </td>
+                                <td><span class="badge bg-secondary">${r.Status}</span></td>
+                            </tr>
+                        `;
+                    });
+                }
+            } catch (err) {
+                console.error("Chyba načítání SAP zakázek:", err);
+            }
+        }
+
+        function loadProductionAndDowntimes() {
+            loadMachines();
+            loadMolds();
+            loadDowntimes();
+            loadScraps();
+        }
+
+        function applyFilters() {
+            clearError();
+            loadProductionAndDowntimes();
+        }
+
+        function resetFilters() {
+            setYesterdayAsDefault();
+            document.getElementById('shiftSelect').value = '';
+            document.getElementById('workshopSelect').value = '';
+            document.getElementById('machineSelect').value = 'ALL';
+            document.getElementById('moldSelect').value = 'ALL';
+            document.getElementById('articleSelect').value = 'ALL';
+            fetchFilters(false);
+            loadProductionAndDowntimes();
+        }
+
+        function refreshCurrentTab() {
+            const activeTab = document.querySelector('#dashboardTabs .nav-link.active');
+            if (!activeTab) return;
+            const id = activeTab.id;
+            if (id === 'tab-production-btn' || id === 'tab-downtimes-btn') {
+                loadProductionAndDowntimes();
+            } else if (id === 'tab-energy-btn') {
+                loadEnergyTab();
+            } else if (id === 'tab-polyvalence-btn') {
+                loadPolyData();
+            } else if (id === 'tab-orders-btn') {
+                loadOrdersTab();
+            }
+        }
+
+        window.onload = async () => {
+            setYesterdayAsDefault();
+            await fetchFilters(true);
+            loadProductionAndDowntimes();
+        };
+    </script>
+</body>
+</html>

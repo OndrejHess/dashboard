@@ -1,0 +1,56 @@
+from fastapi import APIRouter
+import pandas as pd
+
+try:
+    from ..database import get_db_connection, resolve_suivpro_table
+    from ..schemas import FilterRequest
+except (ImportError, ValueError):
+    from database import get_db_connection, resolve_suivpro_table
+    from schemas import FilterRequest
+
+router = APIRouter(prefix="/api/kpi", tags=["Downtimes"])
+
+@router.post("/downtimes")
+def get_downtimes(filters: FilterRequest):
+    try:
+        conn = get_db_connection("SAVEPRO")
+        res_table = resolve_suivpro_table(conn)
+        where_clauses = ["BSARREQU_DURARRET > 0"]
+        
+        if filters.start_date and filters.start_date.strip():
+            where_clauses.append(f"CAST(BSARREQU_DATEDEBEQU AS DATE) >= '{filters.start_date.strip()}'")
+        if filters.end_date and filters.end_date.strip():
+            where_clauses.append(f"CAST(BSARREQU_DATEDEBEQU AS DATE) <= '{filters.end_date.strip()}'")
+            
+        if filters.shift and filters.shift.strip():
+            where_clauses.append(f"RTRIM(LTRIM(CAST(EQUI_REFEQUIPE AS VARCHAR(50)))) = '{filters.shift.strip()}'")
+
+        if filters.workshop and filters.workshop.strip():
+            where_clauses.append(f"RTRIM(LTRIM(CAST(BSARREQU_REFMAC AS VARCHAR(50)))) IN (SELECT DISTINCT RTRIM(LTRIM(CAST(REFMAC AS VARCHAR(50)))) FROM {res_table} WHERE RTRIM(LTRIM(CAST(REFATEL AS VARCHAR(50)))) = '{filters.workshop.strip()}')")
+
+        if filters.machines and len(filters.machines) > 0 and "ALL" not in filters.machines:
+            formatted_machines = "', '".join([m.strip() for m in filters.machines])
+            where_clauses.append(f"RTRIM(LTRIM(CAST(BSARREQU_REFMAC AS VARCHAR(50)))) IN ('{formatted_machines}')")
+
+        if filters.articles and len(filters.articles) > 0 and "ALL" not in filters.articles:
+            formatted_articles = "', '".join([a.strip() for a in filters.articles])
+            where_clauses.append(f"RTRIM(LTRIM(CAST(BSARREQU_REFMAC AS VARCHAR(50)))) IN (SELECT DISTINCT RTRIM(LTRIM(CAST(REFMAC AS VARCHAR(50)))) FROM {res_table} WHERE RTRIM(LTRIM(CAST(REFPROD AS VARCHAR(50)))) IN ('{formatted_articles}'))")
+
+        where_str = " AND ".join(where_clauses)
+        
+        query = f"""
+            SELECT TOP 15
+                RTRIM(LTRIM(CAST(ISNULL(ARR_LIBARRET, ARR_REFARRET) AS VARCHAR(100)))) AS DuvodProstoje,
+                ROUND(SUM(CAST(ISNULL(BSARREQU_DURARRET, 0) AS FLOAT)) / 3600.0, 2) AS Trvani_Hodin,
+                COUNT(*) AS Pocet_Zastaveni
+            FROM SAVEPRO.dbo.RESULT_SAISIE_ARRETS
+            WHERE {where_str}
+            GROUP BY ARR_LIBARRET, ARR_REFARRET
+            ORDER BY SUM(CAST(ISNULL(BSARREQU_DURARRET, 0) AS FLOAT)) DESC
+        """
+        
+        df = pd.read_sql(query, conn)
+        conn.close()
+        return {"status": "success", "data": df.to_dict(orient="records")}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
