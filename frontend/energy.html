@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotřeba stojících lisů - Energetika</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .card { border-radius: 10px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .card-header { background-color: #ffffff; font-weight: bold; border-bottom: 1px solid #eef2f5; }
+    </style>
+</head>
+<body class="p-4">
+
+    <div class="container-fluid">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="text-primary m-0">⚡ Spotřeba stojících lisů (SUIVPRO)</h2>
+            <a href="/" class="btn btn-outline-secondary fw-bold">← Zpět na hlavní dashboard</a>
+        </div>
+
+        <div id="errorAlert" class="alert alert-danger d-none" role="alert"></div>
+
+        <!-- Filtr bar -->
+        <div class="card p-3 mb-4">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Od data:</label>
+                    <input type="date" id="startDate" class="form-control" onchange="loadEnergyAlerts()">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label fw-bold">Do data:</label>
+                    <input type="date" id="endDate" class="form-control" onchange="loadEnergyAlerts()">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="loadEnergyAlerts()">Filtrovat</button>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button class="btn btn-outline-secondary w-100" onclick="resetFilters()">↺ Reset (Měsíc)</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabulka dat -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Záznamy spotřeby (dbo.PVL_CONSO_ENERGIE_ALERTES_EQUIPE)</span>
+                <span id="alertsCountBadge" class="badge bg-danger">-- záznamů</span>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-hover table-striped align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Začátek směny</th>
+                            <th>Konec směny</th>
+                            <th>Stroj (REFMAC)</th>
+                            <th>Směna</th>
+                            <th>Typ OF</th>
+                            <th>Typ události</th>
+                            <th>Začátek alertu</th>
+                            <th>Konec alertu</th>
+                            <th class="text-end">Ztráta (kWh)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="energyAlertsTableBody">
+                        <tr><td colspan="9" class="text-center text-muted">Načítám data...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function setDefaultDateRange() {
+            const today = new Date();
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            document.getElementById('startDate').value = `${yyyy}-${mm}-01`;
+            document.getElementById('endDate').value = `${yyyy}-${mm}-${dd}`;
+        }
+
+        function showError(msg) {
+            const errDiv = document.getElementById('errorAlert');
+            errDiv.classList.remove('d-none');
+            errDiv.innerText = msg;
+        }
+
+        function getFilterPayload() {
+            return {
+                start_date: document.getElementById('startDate').value,
+                end_date: document.getElementById('endDate').value
+            };
+        }
+
+        async function loadEnergyAlerts() {
+            try {
+                document.getElementById('errorAlert').classList.add('d-none');
+                const res = await fetch('/api/kpi/energy-alerts', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(getFilterPayload())
+                });
+                const json = await res.json();
+                const tbody = document.getElementById('energyAlertsTableBody');
+                tbody.innerHTML = '';
+
+                if (json.status === 'success' && json.data && json.data.length > 0) {
+                    document.getElementById('alertsCountBadge').innerText = `${json.data.length} záznamů`;
+                    json.data.forEach(row => {
+                        const debEqu = row.BILOFEQU_DEBEQU || row.bilofequ_debequ || '';
+                        const finEqu = row.BILOFEQU_FINEQU || row.bilofequ_finequ || '';
+                        const refMac = row.BILOFEQU_REFMAC || row.bilofequ_refmac || '';
+                        const refEquipe = row.EQUI_REFEQUIPE || row.equi_refequipe || '';
+                        const typeOf = row.BILOFEQU_TYPEOF || row.bilofequ_typeof || '';
+                        const typeEve = row.BILOFEQU_TYPEEVE || row.bilofequ_typeeve || '';
+                        const debAlerte = row.BILOFEQU_DEBALERTE || row.bilofequ_debalerte || '';
+                        const finalerte = row.BILOFEQU_FINALERTE || row.bilofequ_finalerte || '';
+                        const consoKwh = row.BILOFEQU_CONSO_KWH || row.bilofequ_conso_kwh || 0;
+
+                        tbody.innerHTML += `
+                            <tr>
+                                <td><small>${debEqu}</small></td>
+                                <td><small>${finEqu}</small></td>
+                                <td><strong>${refMac}</strong></td>
+                                <td>${refEquipe}</td>
+                                <td>${typeOf}</td>
+                                <td>${typeEve}</td>
+                                <td><small>${debAlerte}</small></td>
+                                <td><small>${finalerte}</small></td>
+                                <td class="text-end text-danger fw-bold">${Number(consoKwh).toFixed(2)}</td>
+                            </tr>
+                        `;
+                    });
+                } else {
+                    document.getElementById('alertsCountBadge').innerText = `0 záznamů`;
+                    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">Žádné záznamy pro vybrané období.</td></tr>`;
+                }
+            } catch (err) {
+                showError("Chyba při načítání dat: " + err);
+            }
+        }
+
+        function resetFilters() {
+            setDefaultDateRange();
+            loadEnergyAlerts();
+        }
+
+        window.onload = () => {
+            setDefaultDateRange();
+            loadEnergyAlerts();
+        };
+    </script>
+</body>
+</html>
