@@ -13,7 +13,8 @@ router = APIRouter(prefix="/api", tags=["Operators & Polyvalence"])
 def get_polyvalence_data(
     from_date: Optional[str] = Query(None, alias="from"),
     to_date: Optional[str] = Query(None, alias="to"),
-    operator: Optional[str] = None
+    operator: Optional[str] = None,
+    machine: Optional[str] = None
 ):
     """
     Returns time spent by each operator on each machine / station for the ILUO skill matrix.
@@ -29,6 +30,8 @@ def get_polyvalence_data(
             where_clauses.append(f"CAST(infoop_datedebequ AS DATE) <= '{to_date.strip()}'")
         if operator and operator.strip():
             where_clauses.append(f"RTRIM(LTRIM(CAST(infoop_codeop AS VARCHAR(50)))) = '{operator.strip()}'")
+        if machine and machine.strip() and machine.strip() != "ALL":
+            where_clauses.append(f"RTRIM(LTRIM(CAST(infoop_refmac AS VARCHAR(50)))) = '{machine.strip()}'")
 
         where_str = " AND ".join(where_clauses)
         

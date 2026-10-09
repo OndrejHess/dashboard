@@ -81,9 +81,15 @@ Během analýzy serveru bylo identifikováno několik klíčových databází s 
 - Výpočet odpracovaných hodin každého operátora na jednotlivých typech lisů a pracovišť.
 - Barevné zařazení do úrovní **I** (iniciální), **L** (limitovaný), **U** (způsobilý), **O** (operativní/mentor) s možností přizpůsobení hodinových limitů přímo v UI.
 
-### Modul E: SAP Zakázky & Plnění plánu (Nové rozšíření)
-- Napojení na `GPAO_PVL_SAP.dbo.OFGPAO` a `GP_FIN_OF`.
-- Zobrazení aktuálně naplánovaných a běžících zakázek, plánovaných zdvihů vs. odvedených kusů v SAPu a procenta splnění s vizuálním progress barem.
+### Modul F: Výměny forem (Mold Changes)
+- Detekce časů výměn nástrojů/forem na lisech (kombinace SUIVPRO ekvip a SAVEPRO prostojů).
+- Analýza průměrné doby výměny per lis a trend v čase.
+
+### Modul G: Spotřeba materiálu (Material Consumption - Cyklades)
+- Výpočet spotřeby surovin a materiálu (kg) dle normativů `CONSOMMABLES_PRODUITS` a odvedené výroby `Resultat_equipe`.
+- Souhrn za zvolený materiál (např. `PPM0360`) nebo všechny materiály přes všechny přihlášené zakázky ve filtru.
+- Analýza efektivní spotřeby (dobré kusy) vs. ztrát ve zmetcích.
+- Rozpad na jednotlivé výrobní zakázky (OF) s možností třídění.
 
 ---
 
@@ -117,6 +123,9 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 | `GET` | `/api/kpi/energy-live` | Aktuální příkon lisů v kW a souhrnný výkon haly |
 | `POST` | `/api/kpi/energy-alerts` | Seznam energetických alertů stojících lisů |
 | `POST` | `/api/kpi/energy-stops` | Spotřeba kWh během prostojů |
+| `POST` | `/api/kpi/mold-changes` | Seznam a statistiky výměn forem |
+| `GET` | `/api/materials/list` | Seznam všech surovin a materiálů (Cyklades) |
+| `POST` | `/api/materials/consumption` | Spotřeba materiálu dle zakázek (OF), souhrny a denní trend |
 | `GET` | `/api/polyvalence-data` | Data pro kvalifikační matici operátorů |
 | `POST` | `/api/orders/sap` | Seznam výrobních zakázek SAP a jejich plnění |
 | `GET` | `/api/prostoje` | Zpětně kompatibilní endpoint |

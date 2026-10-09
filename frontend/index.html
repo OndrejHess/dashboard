@@ -147,7 +147,8 @@
                         ⚙️ Podrobné filtry (Stroje, Formy) ▾
                     </button>
                     <button class="btn btn-outline-secondary btn-sm" onclick="quickFilterToday()" title="Pouze dnešní den">Dnes</button>
-                    <button class="btn btn-outline-secondary btn-sm" onclick="resetFilters()" title="Od začátku měsíce">Měsíc</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="quickFilterYesterday()" title="Pouze včerejší den">Včera</button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="quickFilterMonth()" title="Od začátku měsíce">Měsíc</button>
                 </div>
             </div>
 
@@ -155,22 +156,29 @@
             <div class="collapse mt-3" id="advancedFiltersCollapse">
                 <div class="p-3 bg-light rounded border">
                     <div class="row g-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label fw-bold small">Stroj:</label>
                             <select id="machineSelect" class="form-select form-select-sm" onchange="onMachineChange()">
                                 <option value="ALL" selected>-- Všechny stroje --</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label fw-bold small">Forma / Nástroj:</label>
                             <select id="moldSelect" class="form-select form-select-sm" onchange="applyFilters()">
                                 <option value="ALL" selected>-- Všechny formy --</option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label fw-bold small">Výrobek:</label>
                             <select id="articleSelect" class="form-select form-select-sm" onchange="applyFilters()">
                                 <option value="ALL" selected>-- Všechny výrobky --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold small text-primary">🧪 Materiál / Surovina:</label>
+                            <select id="materialSelect" class="form-select form-select-sm border-primary" onchange="applyFilters()">
+                                <option value="ALL">-- Všechny materiály --</option>
+                                <option value="PPM0360" selected>PPM0360 - PP DAPLEN EE001AI natur</option>
                             </select>
                         </div>
                     </div>
@@ -184,16 +192,19 @@
                 <button class="nav-link active fw-bold" id="tab-production-btn" data-bs-toggle="pill" data-bs-target="#tab-production" type="button" role="tab" onclick="loadProductionTab()">📊 Výroba & OEE</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link fw-bold" id="tab-downtimes-btn" data-bs-toggle="pill" data-bs-target="#tab-downtimes" type="button" role="tab" onclick="loadDowntimesAndScrapsTab()">⏱️ Prostoje & Vady</button>
-            </li>
-            <li class="nav-item" role="presentation">
                 <button class="nav-link fw-bold" id="tab-energy-btn" data-bs-toggle="pill" data-bs-target="#tab-energy" type="button" role="tab" onclick="loadEnergyTab()">⚡ Energetika & Ztráty</button>
             </li>
             <li class="nav-item" role="presentation">
                 <button class="nav-link fw-bold" id="tab-polyvalence-btn" data-bs-toggle="pill" data-bs-target="#tab-polyvalence" type="button" role="tab" onclick="loadPolyvalenceTab()">👤 Polyvalence (ILUO)</button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link fw-bold" id="tab-orders-btn" data-bs-toggle="pill" data-bs-target="#tab-orders" type="button" role="tab" onclick="loadOrdersTab()">📋 Výrobní Zakázky (Plán & Realita)</button>
+                <button class="nav-link fw-bold" id="tab-orders-btn" data-bs-toggle="pill" data-bs-target="#tab-orders" type="button" role="tab" onclick="loadOrdersTab()">📋 Výrobní Zakázky (Plán &amp; Realita)</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="tab-mold-changes-btn" data-bs-toggle="pill" data-bs-target="#tab-mold-changes" type="button" role="tab" onclick="loadMoldChangesTab()">🔄 Výměny forem</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold" id="tab-materials-btn" data-bs-toggle="pill" data-bs-target="#tab-materials" type="button" role="tab" onclick="loadMaterialsTab()">🧪 Spotřeba materiálu</button>
             </li>
         </ul>
 
@@ -231,7 +242,7 @@
                 </div>
 
                 <!-- Tabulky strojů a forem -->
-                <div class="row">
+                <div class="row mb-4">
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
@@ -282,10 +293,8 @@
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- ZÁLOŽKA 2: PROSTOJE & VADY -->
-            <div class="tab-pane fade" id="tab-downtimes" role="tabpanel">
+                <!-- Pareto prostojů a zmetků -->
                 <div class="row">
                     <div class="col-md-6">
                         <div class="card">
@@ -302,10 +311,12 @@
                                                 <th class="sortable" onclick="sortDowntimes('duvod')">Důvod prostoje <span id="sort-downtimes-duvod" class="sort-icon">↕</span></th>
                                                 <th class="text-end sortable" onclick="sortDowntimes('trvani')">Trvání (hod) <span id="sort-downtimes-trvani" class="sort-icon">▼</span></th>
                                                 <th class="text-end sortable" onclick="sortDowntimes('zastaveni')">Zastavení <span id="sort-downtimes-zastaveni" class="sort-icon">↕</span></th>
+                                                <th class="text-end sortable" onclick="sortDowntimes('disponibilni')">Dispon. doba (h) <span id="sort-downtimes-disponibilni" class="sort-icon">↕</span></th>
+                                                <th class="text-end sortable" onclick="sortDowntimes('podil')">% k NON‑OEE <span id="sort-downtimes-podil" class="sort-icon">↕</span></th>
                                             </tr>
                                         </thead>
                                         <tbody id="downtimesTableBody">
-                                            <tr><td colspan="3" class="text-center text-muted">Načítám prostoje...</td></tr>
+                                            <tr><td colspan="5" class="text-center text-muted">Načítám prostoje...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -327,10 +338,11 @@
                                             <tr>
                                                 <th class="sortable" onclick="sortScraps('vada')">Typ vady <span id="sort-scraps-vada" class="sort-icon">↕</span></th>
                                                 <th class="text-end sortable" onclick="sortScraps('zmetky')">Počet zmetků (ks) <span id="sort-scraps-zmetky" class="sort-icon">▼</span></th>
+                                                <th class="text-end sortable" onclick="sortScraps('podil')">% k NON‑OEE <span id="sort-scraps-podil" class="sort-icon">↕</span></th>
                                             </tr>
                                         </thead>
                                         <tbody id="scrapsTableBody">
-                                            <tr><td colspan="2" class="text-center text-muted">Načítám zmetky...</td></tr>
+                                            <tr><td colspan="3" class="text-center text-muted">Načítám zmetky...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -340,28 +352,64 @@
                 </div>
             </div>
 
-            <!-- ZÁLOŽKA 3: ENERGETIKA & ZTRÁTY -->
+<!-- ZÁLOŽKA 3: ENERGETIKA & ZTRÁTY -->
             <div class="tab-pane fade" id="tab-energy" role="tabpanel">
                 <div class="row mb-4">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="card bg-dark text-white p-3">
                             <small class="text-uppercase text-secondary fw-semibold">Aktuální příkon lisovny (Live)</small>
                             <h2 class="my-1 text-warning" id="liveTotalKw">-- kW</h2>
                             <small id="liveTimestamp" class="text-muted">Aktualizace: --</small>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="card bg-info text-white p-3">
                             <small class="text-uppercase fw-semibold">Aktivní lisy s odběrem</small>
                             <h2 class="my-1" id="liveActiveMacs">-- / --</h2>
                             <small>Stroje s příkonem > 1 kW</small>
                         </div>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="card bg-danger text-white p-3">
                             <small class="text-uppercase fw-semibold">Ztrátová spotřeba (stojící lisy)</small>
                             <h2 class="my-1" id="energyAlertsCount">--</h2>
                             <small>Zjištěné incidenty a alerty</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white p-3">
+                            <small class="text-uppercase fw-semibold">Celková ztráta v Kč</small>
+                            <h2 class="my-1" id="energyTotalLossKc">-- Kč</h2>
+                            <small>Za vybrané období</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel ceny energie -->
+                <div class="card mb-3 border-warning">
+                    <div class="card-body py-2">
+                        <div class="row align-items-center g-2">
+                            <div class="col-auto">
+                                <label class="form-label fw-bold small mb-0">⚡ Cena elektřiny:</label>
+                            </div>
+                            <div class="col-auto">
+                                <div class="input-group input-group-sm" style="width: 185px;">
+                                    <input type="number" id="energyPriceInput" class="form-control"
+                                           placeholder="např. 4.50" step="0.01" min="0">
+                                    <span class="input-group-text">Kč / kWh</span>
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <button class="btn btn-warning btn-sm fw-bold" onclick="saveEnergyPrice()">
+                                    💾 Uložit cenu
+                                </button>
+                            </div>
+                            <div class="col-auto">
+                                <small id="energyPriceStatus" class="text-muted"></small>
+                            </div>
+                            <div class="col text-end">
+                                <small class="text-muted">Cena se uloží v prohlížeči a přepočítá sloupec <strong>Ztráta v Kč</strong> v tabulce stojících lisů.</small>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -395,18 +443,18 @@
                     <div class="col-md-6">
                         <div class="card">
                             <div class="card-header d-flex justify-content-between align-items-center">
-                                <span>🛑 Spotřeba stojících lisů (dbo.PVL_CONSO_ENERGIE_ALERTES_EQUIPE)</span>
+                                <span>🛑 Spotřeba stojících lisů - Souhrn dle lisů (SUIVPRO)</span>
                                 <small class="text-muted fw-normal">Kliknutím na záhlaví seřadíte data</small>
                             </div>
                             <div class="card-body table-responsive" style="max-height: 450px;">
                                 <table class="table table-hover table-striped align-middle">
                                     <thead class="table-light">
                                         <tr>
-                                            <th class="sortable" onclick="sortEnergyAlerts('stroj')">Stroj <span id="sort-alert-stroj" class="sort-icon">↕</span></th>
-                                            <th class="sortable" onclick="sortEnergyAlerts('smena')">Směna <span id="sort-alert-smena" class="sort-icon">↕</span></th>
-                                            <th class="sortable" onclick="sortEnergyAlerts('debalerte')">Začátek alertu <span id="sort-alert-debalerte" class="sort-icon">↕</span></th>
-                                            <th class="sortable" onclick="sortEnergyAlerts('finalerte')">Konec alertu <span id="sort-alert-finalerte" class="sort-icon">↕</span></th>
+                                            <th class="sortable" onclick="sortEnergyAlerts('stroj')">Stroj (Lis) <span id="sort-alert-stroj" class="sort-icon">↕</span></th>
+                                            <th class="text-end sortable" onclick="sortEnergyAlerts('alertu')">Počet alertů <span id="sort-alert-alertu" class="sort-icon">↕</span></th>
+                                            <th class="text-end sortable" onclick="sortEnergyAlerts('trvani')">Trvání (h) <span id="sort-alert-trvani" class="sort-icon">↕</span></th>
                                             <th class="text-end sortable" onclick="sortEnergyAlerts('conso')">Ztráta (kWh) <span id="sort-alert-conso" class="sort-icon">▼</span></th>
+                                            <th class="text-end sortable" onclick="sortEnergyAlerts('kc')">Ztráta v Kč <span id="sort-alert-kc" class="sort-icon">↕</span></th>
                                         </tr>
                                     </thead>
                                     <tbody id="energyAlertsTableBody">
@@ -488,6 +536,294 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ZÁLOŽKA F: VÝMĚNY FOREM -->
+            <div class="tab-pane fade" id="tab-mold-changes" role="tabpanel">
+
+                <!-- KPI karty -->
+                <div class="row g-3 mb-4" id="moldChangesKpiRow">
+                    <div class="col-md-2">
+                        <div class="card text-center p-3 border-0 shadow-sm">
+                            <small class="text-uppercase fw-semibold text-muted">Celkem výměn</small>
+                            <h3 class="my-1 text-primary" id="mcKpiTotal">—</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="card text-center p-3 border-0 shadow-sm">
+                            <small class="text-uppercase fw-semibold text-muted">Průměrná doba výměny</small>
+                            <h3 class="my-1 text-warning" id="mcKpiAvg">— min</h3>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center p-3 border-0 shadow-sm">
+                            <small class="text-uppercase fw-semibold text-muted">Přesnost dat</small>
+                            <h3 class="my-1" id="mcKpiQuality">—</h3>
+                            <small class="text-muted" id="mcKpiQualityDetail"></small>
+                        </div>
+                    </div>
+                    <div class="col-md-5 d-flex align-items-center">
+                        <div class="d-flex flex-column gap-1 small">
+                            <div class="d-flex gap-2">
+                                <span class="badge bg-success p-2">🟢 &lt; 30 min — Výborná</span>
+                                <span class="badge bg-warning text-dark p-2">🟡 30–60 min — Přijatelná</span>
+                                <span class="badge bg-danger p-2">🔴 &gt; 60 min — Kritická</span>
+                            </div>
+                            <div class="text-muted">
+                                🔵 <strong>Čas z prostoje</strong> = přesný první díl &nbsp;|&nbsp;
+                                ⬜ <strong>DEBEQU</strong> = začátek směny (odhad)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <!-- Trend graf -->
+                    <div class="col-md-7">
+                        <div class="card">
+                            <div class="card-header">📈 Trend průměrné doby výměny (denně)</div>
+                            <div class="card-body">
+                                <canvas id="moldChangeTrendChart" height="100"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Distribuce délky výměn -->
+                    <div class="col-md-5">
+                        <div class="card">
+                            <div class="card-header">📊 Distribuce dob výměny</div>
+                            <div class="card-body">
+                                <canvas id="moldChangeDistChart" height="100"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI tabulka per stroj -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>🏭 Statistiky výměn per stroj</span>
+                        <small class="text-muted fw-normal">Kliknutím na záhlaví seřadíte data</small>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 320px;">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th class="sortable" onclick="sortMoldChanges('stroj')">Stroj <span id="sort-mc-stroj" class="sort-icon">▼</span></th>
+                                        <th class="text-end sortable" onclick="sortMoldChanges('pocet')">Počet výměn <span id="sort-mc-pocet" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable" onclick="sortMoldChanges('prumer')">Průměr (min) <span id="sort-mc-prumer" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable" onclick="sortMoldChanges('min')">Min (min) <span id="sort-mc-min" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable" onclick="sortMoldChanges('max')">Max (min) <span id="sort-mc-max" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable" onclick="sortMoldChanges('stddev')">StdDev (min) <span id="sort-mc-stddev" class="sort-icon">↕</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="moldChangesKpiTbody">
+                                    <tr><td colspan="6" class="text-center text-muted py-3">Načítám data výměn...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabulka posledních výměn -->
+                <div class="card">
+                    <div class="card-header">📋 Poslední výměny forem (max 500)</div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 380px;">
+                            <table class="table table-sm table-striped align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Stroj</th>
+                                        <th>Stará forma</th>
+                                        <th>Nová forma</th>
+                                        <th>Výrobek</th>
+                                        <th>Konec výroby staré formy</th>
+                                        <th>1. díl nové formy</th>
+                                        <th class="text-center">Zdroj času</th>
+                                        <th class="text-end">Doba výměny (min)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="moldChangesListTbody">
+                                    <tr><td colspan="8" class="text-center text-muted py-3">Načítám seznam výměn...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- END tab-mold-changes -->
+
+            <!-- ZÁLOŽKA G: SPOTŘEBA MATERIÁLU -->
+            <div class="tab-pane fade" id="tab-materials" role="tabpanel">
+
+                <!-- Horní lišta: Výběr materiálu přímo v záložce -->
+                <div class="card mb-4 border-primary">
+                    <div class="card-body py-3">
+                        <div class="row align-items-center g-3">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold small text-primary mb-1">🧪 Zvolený materiál / surovina:</label>
+                                <select id="matTabSelect" class="form-select form-select-sm border-primary fw-bold" onchange="onMaterialTabChange()">
+                                    <option value="ALL">-- Všechny suroviny a materiály --</option>
+                                    <option value="PPM0360" selected>PPM0360 - PP DAPLEN EE001AI natur (KG)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <small class="text-muted d-block">Metodika výpočtu (Cyklades):</small>
+                                <span class="badge bg-light text-dark border">Norma: <code>CSP_QUANTITE × QTEFAB</code> (recyklovatelné: <code>× QTEBONNE</code>)</span>
+                            </div>
+                            <div class="col-md-3 text-end">
+                                <button class="btn btn-outline-primary btn-sm" onclick="loadMaterialsTab()">
+                                    🔄 Přepočítat spotřebu
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- KPI KARTY: 1. Budoucí potřeba (Plán) + 2. Dosavadní spotřeba -->
+                <div class="row g-3 mb-4" id="matKpiRow">
+                    <div class="col-md-3">
+                        <div class="card text-center p-3 border-0 shadow-sm bg-warning text-dark">
+                            <small class="text-uppercase fw-bold text-dark">🎯 Chybí na dokončení zakázek</small>
+                            <h2 class="my-1 fw-bold text-dark" id="matKpiFutureNeeded">0.00 kg</h2>
+                            <small id="matKpiFutureSub" class="fw-semibold text-secondary">na dokončení aktivních OF</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center p-3 border-0 shadow-sm bg-primary text-white">
+                            <small class="text-uppercase fw-semibold">Celkem v aktivních OF</small>
+                            <h2 class="my-1 fw-bold" id="matKpiFutureTotal">0.00 kg</h2>
+                            <small id="matKpiFutureTotalSub">zadáno k výrobě</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center p-3 border-0 shadow-sm bg-secondary text-white">
+                            <small class="text-uppercase fw-semibold">Odvedená spotřeba (historie)</small>
+                            <h2 class="my-1 fw-bold" id="matKpiTotal">0.00 kg</h2>
+                            <small id="matKpiTotalSub">v zadaném časovém filtru</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card text-center p-3 border-0 shadow-sm bg-dark text-white">
+                            <small class="text-uppercase fw-semibold text-secondary">Aktivní přihlášené OF</small>
+                            <h2 class="my-1 fw-bold text-warning" id="matKpiOrders">0 OF / 0 lisů</h2>
+                            <small id="matKpiPieces">Zbyva vyrobit: 0 ks</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabulka A: BUDOUCÍ POTŘEBA - Přihlášené zakázky v Cyklades a kolik materiálu chybí -->
+                <div class="card mb-4 border-warning shadow-sm">
+                    <div class="card-header bg-warning bg-opacity-10 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="fw-bold text-dark">📦 Budoucí potřeba materiálu na dokončení přihlášených zakázek (aktivní OF)</span>
+                            <span class="badge bg-warning text-dark ms-2" id="matPlanOrdersCountBadge">0 zakázek</span>
+                        </div>
+                        <small class="text-muted fw-normal">Seřazeno dle množství materiálu potřebného na dokončení (kg)</small>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 460px;">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-warning text-dark">
+                                    <tr>
+                                        <th class="sortable" onclick="sortMaterialPlanned('of')">Zakázka (OF) <span id="sort-matp-of" class="sort-icon">↕</span></th>
+                                        <th class="sortable" onclick="sortMaterialPlanned('stroj')">Lis / Stroj <span id="sort-matp-stroj" class="sort-icon">↕</span></th>
+                                        <th class="sortable" onclick="sortMaterialPlanned('vyrobek')">Výrobek <span id="sort-matp-vyrobek" class="sort-icon">↕</span></th>
+                                        <th>Materiál</th>
+                                        <th class="text-end">Dávka/ks</th>
+                                        <th class="text-end sortable" onclick="sortMaterialPlanned('plan_ks')">Plán ks <span id="sort-matp-plan_ks" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable" onclick="sortMaterialPlanned('vyrobeno_ks')">Hotovo ks <span id="sort-matp-vyrobeno_ks" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable text-danger" onclick="sortMaterialPlanned('zbyva_ks')">Zbývá vyrobit ks <span id="sort-matp-zbyva_ks" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable text-dark" onclick="sortMaterialPlanned('plan_mat')">Celkem plán mat. <span id="sort-matp-plan_mat" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable text-success" onclick="sortMaterialPlanned('hotovo_mat')">Dosud hotovo <span id="sort-matp-hotovo_mat" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable text-primary fw-bold" onclick="sortMaterialPlanned('chybi_mat')">POTŘEBA NA DOKONČENÍ <span id="sort-matp-chybi_mat" class="sort-icon">▼</span></th>
+                                        <th class="text-center">Stav</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="materialPlannedTableBody">
+                                    <tr><td colspan="12" class="text-center text-muted py-3">Načítám přihlášené zakázky...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graf denního trendu historické spotřeby -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>📈 Historický denní průběh spotřeby materiálu (kg)</span>
+                        <small class="text-muted fw-normal">Odvedeno dle směn v zadaném období filtru</small>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="materialTrendChart" height="90"></canvas>
+                    </div>
+                </div>
+
+                <!-- Tabulka B: Historická odvedená spotřeba dle jednotlivých zakázek -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <span>📋 Historická odvedená spotřeba zakázek ve filtru (odvedená výroba)</span>
+                            <span class="badge bg-secondary ms-2" id="matOrdersCountBadge">0 zakázek</span>
+                        </div>
+                        <small class="text-muted fw-normal">Kliknutím na záhlaví seřadíte data</small>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 520px;">
+                            <table class="table table-sm table-hover table-striped align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="sortable" onclick="sortMaterialOrders('of')">Zakázka (OF) <span id="sort-mat-of" class="sort-icon">↕</span></th>
+                                        <th class="sortable" onclick="sortMaterialOrders('stroj')">Lis / Stroj <span id="sort-mat-stroj" class="sort-icon">↕</span></th>
+                                        <th class="sortable" onclick="sortMaterialOrders('vyrobek')">Výrobek <span id="sort-mat-vyrobek" class="sort-icon">↕</span></th>
+                                        <th class="sortable" onclick="sortMaterialOrders('mat')">Materiál <span id="sort-mat-mat" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable" onclick="sortMaterialOrders('davka')">Dávka/ks (kg) <span id="sort-mat-davka" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable" onclick="sortMaterialOrders('vyrobeno')">Vyrobeno (ks) <span id="sort-mat-vyrobeno" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable" onclick="sortMaterialOrders('dobre')">Dobré (ks) <span id="sort-mat-dobre" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable" onclick="sortMaterialOrders('zmetky')">Zmetky (ks) <span id="sort-mat-zmetky" class="sort-icon">↕</span></th>
+                                        <th class="text-end sortable" onclick="sortMaterialOrders('spotreba')">Spotřeba celkem (kg) <span id="sort-mat-spotreba" class="sort-icon">▼</span></th>
+                                        <th class="text-end sortable" onclick="sortMaterialOrders('ztrata')">Ztráta zmetky (kg) <span id="sort-mat-ztrata" class="sort-icon">↕</span></th>
+                                        <th class="sortable" onclick="sortMaterialOrders('datum')">Čas výroby <span id="sort-mat-datum" class="sort-icon">↕</span></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="materialOrdersTableBody">
+                                    <tr><td colspan="11" class="text-center text-muted py-3">Načítám spotřebu zakázek...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabulka 2: Souhrn materiálů (když je více materiálů nebo pro celkový přehled) -->
+                <div class="card mb-4" id="materialsSummaryCard">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>📊 Souhrnný přehled spotřeby surovin a materiálů</span>
+                        <small class="text-muted fw-normal">Seřazeno dle celkové spotřeby v kg</small>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive" style="max-height: 380px;">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Kód materiálu</th>
+                                        <th>Název materiálu / suroviny</th>
+                                        <th class="text-center">Jednotka</th>
+                                        <th class="text-end">Počet OF</th>
+                                        <th class="text-end">Počet lisů</th>
+                                        <th class="text-end">Celková spotřeba</th>
+                                        <th class="text-end">Ztráta ve zmetcích</th>
+                                        <th class="text-center">Akce</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="materialsSummaryTableBody">
+                                    <tr><td colspan="8" class="text-center text-muted py-3">Načítám souhrn...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- END tab-materials -->
 
         </div>
     </div>
@@ -588,6 +924,7 @@
             document.getElementById('endDate').value = `${yyyy}-${mm}-${dd}`;
         }
 
+
         function quickFilterToday() {
             const today = new Date();
             const yyyy = today.getFullYear();
@@ -599,6 +936,22 @@
             document.getElementById('endDate').value = formatted;
             applyFilters();
         }
+        function quickFilterYesterday() {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yyyy = yesterday.getFullYear();
+            const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
+            const dd = String(yesterday.getDate()).padStart(2, '0');
+            const formatted = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('startDate').value = formatted;
+            document.getElementById('endDate').value = formatted;
+            applyFilters();
+        }
+		function quickFilterMonth() {
+            setDefaultDateRange(); // Nastaví od 1. dne měsíce do dneška
+            applyFilters();        // Použije filtry pro aktivní záložku bez resetování materiálu
+        }
+
 
         function updateSortIcon(prefix, activeCol, isAsc) {
             document.querySelectorAll(`[id^="${prefix}-"]`).forEach(span => {
@@ -616,6 +969,8 @@
             const macVal = document.getElementById('machineSelect').value;
             const moldVal = document.getElementById('moldSelect').value;
             const artVal = document.getElementById('articleSelect').value;
+            const matEl = document.getElementById('materialSelect');
+            const matVal = matEl ? matEl.value : 'PPM0360';
 
             return {
                 start_date: document.getElementById('startDate').value,
@@ -624,7 +979,8 @@
                 workshop: document.getElementById('workshopSelect').value,
                 machines: macVal && macVal !== 'ALL' ? [macVal] : ["ALL"],
                 molds: moldVal && moldVal !== 'ALL' ? [moldVal] : ["ALL"],
-                articles: artVal && artVal !== 'ALL' ? [artVal] : ["ALL"]
+                articles: artVal && artVal !== 'ALL' ? [artVal] : ["ALL"],
+                material: matVal && matVal !== 'ALL' ? matVal : null
             };
         }
 
@@ -899,6 +1255,14 @@
                     const zA = Number(a.Pocet_Zastaveni || a.pocet_zastaveni || 0);
                     const zB = Number(b.Pocet_Zastaveni || b.pocet_zastaveni || 0);
                     return downtimeSortAsc ? zA - zB : zB - zA;
+                } else if (col === 'disponibilni') {
+                    const dA = Number(a.DisponibilniDoba || a.disponibilni_doba || 0);
+                    const dB = Number(b.DisponibilniDoba || b.disponibilni_doba || 0);
+                    return downtimeSortAsc ? dA - dB : dB - dA;
+                } else if (col === 'podil') {
+                    const pA = Number(a.Podil_NonOEE || a.podil_non_oee || 0);
+                    const pB = Number(b.Podil_NonOEE || b.podil_non_oee || 0);
+                    return downtimeSortAsc ? pA - pB : pB - pA;
                 }
             });
         }
@@ -909,18 +1273,22 @@
             updateSortIcon('sort-downtimes', downtimeSortCol, downtimeSortAsc);
 
             if (currentDowntimesData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Žádné prostoje v zadaném období.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Žádné prostoje v zadaném období.</td></tr>';
                 return;
             }
             currentDowntimesData.forEach(row => {
                 const duvod = row.DuvodProstoje || row.duvodprostoje || 'Neznámý';
                 const trvani = Number(row.Trvani_Hodin || row.trvani_hodin || 0).toFixed(2);
                 const zastaveni = row.Pocet_Zastaveni || row.pocet_zastaveni || 0;
+                const dispon = Number(row.DisponibilniDoba || row.disponibilni_doba || 0).toFixed(2);
+                const podil = Number(row.Podil_NonOEE || row.podil_non_oee || 0).toFixed(2);
                 tbody.innerHTML += `
                     <tr>
                         <td>${duvod}</td>
                         <td class="text-end fw-bold text-danger">${trvani} h</td>
                         <td class="text-end">${zastaveni}</td>
+                        <td class="text-end fw-bold">${dispon} h</td>
+                        <td class="text-end fw-bold text-dark">${podil} %</td>
                     </tr>
                 `;
             });
@@ -950,28 +1318,34 @@
                     const values = json.data.map(d => Number(d.Trvani_Hodin || d.trvani_hodin || 0));
 
                     if (downtimeChartInstance) downtimeChartInstance.destroy();
-                    const ctx = document.getElementById('downtimeChart').getContext('2d');
-                    downtimeChartInstance = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: 'Trvání v hodinách',
-                                data: values,
-                                backgroundColor: 'rgba(220, 53, 69, 0.75)',
-                                borderColor: 'rgba(220, 53, 69, 1)',
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            plugins: { legend: { display: false } },
-                            scales: { y: { beginAtZero: true } }
-                        }
-                    });
+                    const ctx = document.getElementById('downtimeChart')?.getContext('2d');
+                    if (ctx) {
+                        downtimeChartInstance = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Trvání v hodinách',
+                                    data: values,
+                                    backgroundColor: 'rgba(220, 53, 69, 0.75)',
+                                    borderColor: 'rgba(220, 53, 69, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: { y: { beginAtZero: true } }
+                            }
+                        });
+                    }
+                } else {
+                    document.getElementById('downtimesTableBody').innerHTML = `<tr><td colspan="5" class="text-center text-danger">Chyba při načítání prostojů: ${json.message || 'Neznámá chyba'}</td></tr>`;
+                    if (downtimeChartInstance) { downtimeChartInstance.destroy(); downtimeChartInstance = null; }
                 }
             } catch (err) {
                 console.error("Chyba načítání prostojů:", err);
+                document.getElementById('downtimesTableBody').innerHTML = `<tr><td colspan="5" class="text-center text-danger">Chyba spojení se serverem: ${err}</td></tr>`;
             }
         }
 
@@ -987,6 +1361,10 @@
                     const zA = Number(a.Zmetky_Ks || a.zmetky_ks || 0);
                     const zB = Number(b.Zmetky_Ks || b.zmetky_ks || 0);
                     return scrapSortAsc ? zA - zB : zB - zA;
+                } else if (col === 'podil') {
+                    const pA = Number(a.Podil_NonOEE || a.podil_non_oee || 0);
+                    const pB = Number(b.Podil_NonOEE || b.podil_non_oee || 0);
+                    return scrapSortAsc ? pA - pB : pB - pA;
                 }
             });
         }
@@ -997,16 +1375,18 @@
             updateSortIcon('sort-scraps', scrapSortCol, scrapSortAsc);
 
             if (currentScrapsData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="2" class="text-center text-muted">Žádné vady v zadaném období.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Žádné vady v zadaném období.</td></tr>';
                 return;
             }
             currentScrapsData.forEach(row => {
                 const vada = row.TypVady || row.typvady || 'Neznámá vada';
                 const pocet = Number(row.Zmetky_Ks || row.zmetky_ks || 0).toLocaleString();
+                const podil = Number(row.Podil_NonOEE || row.podil_non_oee || 0).toFixed(2);
                 tbody.innerHTML += `
                     <tr>
                         <td>${vada}</td>
                         <td class="text-end fw-bold text-danger">${pocet} ks</td>
+                        <td class="text-end fw-bold text-dark">${podil} %</td>
                     </tr>
                 `;
             });
@@ -1036,28 +1416,34 @@
                     const values = json.data.map(d => Number(d.Zmetky_Ks || d.zmetky_ks || 0));
 
                     if (scrapChartInstance) scrapChartInstance.destroy();
-                    const ctx = document.getElementById('scrapChart').getContext('2d');
-                    scrapChartInstance = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: 'Zmetky v kusech',
-                                data: values,
-                                backgroundColor: 'rgba(255, 193, 7, 0.75)',
-                                borderColor: 'rgba(255, 193, 7, 1)',
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            plugins: { legend: { display: false } },
-                            scales: { y: { beginAtZero: true } }
-                        }
-                    });
+                    const ctx = document.getElementById('scrapChart')?.getContext('2d');
+                    if (ctx) {
+                        scrapChartInstance = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Zmetky v kusech',
+                                    data: values,
+                                    backgroundColor: 'rgba(255, 193, 7, 0.75)',
+                                    borderColor: 'rgba(255, 193, 7, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                plugins: { legend: { display: false } },
+                                scales: { y: { beginAtZero: true } }
+                            }
+                        });
+                    }
+                } else {
+                    document.getElementById('scrapsTableBody').innerHTML = `<tr><td colspan="3" class="text-center text-danger">Chyba při načítání zmetků: ${json.message || 'Neznámá chyba'}</td></tr>`;
+                    if (scrapChartInstance) { scrapChartInstance.destroy(); scrapChartInstance = null; }
                 }
             } catch (err) {
                 console.error("Chyba načítání zmetků:", err);
+                document.getElementById('scrapsTableBody').innerHTML = `<tr><td colspan="3" class="text-center text-danger">Chyba spojení se serverem: ${err}</td></tr>`;
             }
         }
 
@@ -1132,29 +1518,28 @@
         }
 
         // --- 6. ENERGETIKA ALERTY (STOJÍCÍ LISY) ---
+        // --- Cena energie (localStorage) ---
+        function getEnergyPrice() {
+            return parseFloat(localStorage.getItem('energy_price_kc_kwh')) || 0;
+        }
+
+        // --- 6. ENERGETIKA ALERTY (STOJÍCÍ LISY - SČÍTÁNÍ DLE LISŮ) ---
         function sortEnergyAlertsDataInMemory() {
             const col = energyAlertsSortCol;
+            const price = getEnergyPrice();
             currentEnergyAlertsData.sort((a, b) => {
                 if (col === 'stroj') {
-                    const valA = (a.BILOFEQU_REFMAC || a.bilofequ_refmac || '').toString();
-                    const valB = (b.BILOFEQU_REFMAC || b.bilofequ_refmac || '').toString();
-                    return energyAlertsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-                } else if (col === 'smena') {
-                    const valA = (a.EQUI_REFEQUIPE || a.equi_refequipe || '').toString();
-                    const valB = (b.EQUI_REFEQUIPE || b.equi_refequipe || '').toString();
-                    return energyAlertsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-                } else if (col === 'debalerte') {
-                    const valA = (a.BILOFEQU_DEBALERTE || a.bilofequ_debalerte || '').toString();
-                    const valB = (b.BILOFEQU_DEBALERTE || b.bilofequ_debalerte || '').toString();
-                    return energyAlertsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-                } else if (col === 'finalerte') {
-                    const valA = (a.BILOFEQU_FINALERTE || a.bilofequ_finalerte || '').toString();
-                    const valB = (b.BILOFEQU_FINALERTE || b.bilofequ_finalerte || '').toString();
-                    return energyAlertsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+                    return energyAlertsSortAsc ? a.stroj.localeCompare(b.stroj) : b.stroj.localeCompare(a.stroj);
+                } else if (col === 'alertu') {
+                    return energyAlertsSortAsc ? a.pocet_alertu - b.pocet_alertu : b.pocet_alertu - a.pocet_alertu;
+                } else if (col === 'trvani') {
+                    return energyAlertsSortAsc ? a.trvani - b.trvani : b.trvani - a.trvani;
                 } else if (col === 'conso') {
-                    const cA = Number(a.BILOFEQU_CONSO_KWH || a.bilofequ_conso_kwh || 0);
-                    const cB = Number(b.BILOFEQU_CONSO_KWH || b.bilofequ_conso_kwh || 0);
-                    return energyAlertsSortAsc ? cA - cB : cB - cA;
+                    return energyAlertsSortAsc ? a.conso - b.conso : b.conso - a.conso;
+                } else if (col === 'kc') {
+                    const kcA = a.conso * price;
+                    const kcB = b.conso * price;
+                    return energyAlertsSortAsc ? kcA - kcB : kcB - kcA;
                 }
             });
         }
@@ -1169,20 +1554,17 @@
                 return;
             }
 
-            currentEnergyAlertsData.slice(0, 80).forEach(r => {
-                const refmac = r.BILOFEQU_REFMAC || r.bilofequ_refmac || '';
-                const equipe = r.EQUI_REFEQUIPE || r.equi_refequipe || '-';
-                const debAlerte = r.BILOFEQU_DEBALERTE || r.bilofequ_debalerte || '-';
-                const finAlerte = r.BILOFEQU_FINALERTE || r.bilofequ_finalerte || '-';
-                const conso = Number(r.BILOFEQU_CONSO_KWH || r.bilofequ_conso_kwh || 0).toFixed(2);
+            const price = getEnergyPrice();
 
+            currentEnergyAlertsData.forEach(r => {
+                const lossKc = r.conso * price;
                 tbody.innerHTML += `
                     <tr>
-                        <td><strong>${refmac}</strong></td>
-                        <td>${equipe}</td>
-                        <td><small>${debAlerte}</small></td>
-                        <td><small>${finAlerte}</small></td>
-                        <td class="text-end text-danger fw-bold">${conso} kWh</td>
+                        <td><strong>${r.stroj}</strong></td>
+                        <td class="text-end">${r.pocet_alertu}</td>
+                        <td class="text-end">${r.trvani.toFixed(2)} h</td>
+                        <td class="text-end text-danger">${r.conso.toFixed(2)} kWh</td>
+                        <td class="text-end text-danger fw-bold">${lossKc.toFixed(2)} Kč</td>
                     </tr>
                 `;
             });
@@ -1204,10 +1586,46 @@
                 });
                 const json = await res.json();
                 if (json.status === 'success') {
-                    currentEnergyAlertsData = json.data || [];
-                    document.getElementById('energyAlertsCount').innerText = `${currentEnergyAlertsData.length} incidentů`;
+                    const rawData = json.data || [];
+                    const map = {};
+                    rawData.forEach(r => {
+                        const mac = r.BILOFEQU_REFMAC || r.bilofequ_refmac || 'Neznámý lis';
+                        const conso = Number(r.BILOFEQU_CONSO_KWH || r.bilofequ_conso_kwh || 0);
+                        
+                        let durationH = 0;
+                        const debStr = r.BILOFEQU_DEBALERTE || r.bilofequ_debalerte;
+                        const finStr = r.BILOFEQU_FINALERTE || r.bilofequ_finalerte;
+                        if (debStr && finStr && debStr !== '-' && finStr !== '-') {
+                            const d1 = new Date(debStr);
+                            const d2 = new Date(finStr);
+                            if (!isNaN(d1) && !isNaN(d2) && d2 > d1) {
+                                durationH = (d2 - d1) / (1000 * 60 * 60);
+                            }
+                        }
+
+                        if (!map[mac]) {
+                            map[mac] = {
+                                stroj: mac,
+                                pocet_alertu: 0,
+                                trvani: 0,
+                                conso: 0
+                            };
+                        }
+                        map[mac].pocet_alertu += 1;
+                        map[mac].trvani += durationH;
+                        map[mac].conso += conso;
+                    });
+                    
+                    currentEnergyAlertsData = Object.values(map);
+                    document.getElementById('energyAlertsCount').innerText = `${rawData.length} incidentů (${currentEnergyAlertsData.length} lisů)`;
                     sortEnergyAlertsDataInMemory();
                     renderEnergyAlertsTable();
+                    updateTotalEnergyLossDisplay();
+                } else {
+                    document.getElementById('energyAlertsTableBody').innerHTML = '<tr><td colspan="5" class="text-center text-muted">Žádné energetické alerty k zobrazení.</td></tr>';
+                    document.getElementById('energyAlertsCount').innerText = `0 incidentů`;
+                    currentEnergyAlertsData = [];
+                    updateTotalEnergyLossDisplay();
                 }
             } catch (err) {
                 console.error("Chyba načítání energetických alertů:", err);
@@ -1219,6 +1637,36 @@
             loadEnergyAlerts();
         }
 
+        // Pomocná funkce pro výpočet a zobrazení celkové ztráty v Kč
+        function updateTotalEnergyLossDisplay() {
+            const price = getEnergyPrice();
+            const totalConso = currentEnergyAlertsData.reduce((sum, item) => sum + (item.conso || 0), 0);
+            const totalKc = totalConso * price;
+            
+            const el = document.getElementById('energyTotalLossKc');
+            if (el) {
+                el.innerText = `${totalKc.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Kč`;
+            }
+        }
+
+        function saveEnergyPrice() {
+            const val = parseFloat(document.getElementById('energyPriceInput').value);
+            if (isNaN(val) || val < 0) {
+                const st = document.getElementById('energyPriceStatus');
+                st.textContent = '⚠️ Zadejte platné kladné číslo.';
+                st.className = 'text-danger small';
+                return;
+            }
+            localStorage.setItem('energy_price_kc_kwh', val.toString());
+            const st = document.getElementById('energyPriceStatus');
+            st.textContent = `✅ Uloženo: ${val.toFixed(2)} Kč/kWh`;
+            st.className = 'text-success small fw-bold';
+            
+            // Přepočítat tabulku i celkový součet okamžitě
+            renderEnergyAlertsTable();
+            updateTotalEnergyLossDisplay();
+            setTimeout(() => { st.textContent = ''; }, 4000);
+        }
         // --- 7. VÝROBNÍ ZAKÁZKY (SAP / MES) ---
         function sortOrdersDataInMemory() {
             const col = ordersSortCol;
@@ -1350,7 +1798,7 @@
         function getPolyCategory(sec) {
             if (sec >= polyThresholds.O) return 'o';
             if (sec >= polyThresholds.U) return 'u';
-            if (sec >= polyThresholds.I) return 'l';
+            if (sec >= polyThresholds.L) return 'l';
             return 'i';
         }
 
@@ -1432,6 +1880,10 @@
         function loadProductionTab() {
             loadMachines();
             loadMolds();
+            loadDowntimes();
+            loadScraps();
+
+
         }
 
         function loadDowntimesAndScrapsTab() {
@@ -1454,6 +1906,10 @@
                 loadOrdersTab();
             } else if (tabId === 'tab-polyvalence-btn') {
                 loadPolyData();
+            } else if (tabId === 'tab-mold-changes-btn') {
+                loadMoldChangesTab();
+            } else if (tabId === 'tab-materials-btn') {
+                loadMaterialsTab();
             }
         }
 
@@ -1464,6 +1920,12 @@
             document.getElementById('machineSelect').value = 'ALL';
             document.getElementById('moldSelect').value = 'ALL';
             document.getElementById('articleSelect').value = 'ALL';
+            if (document.getElementById('materialSelect')) {
+                document.getElementById('materialSelect').value = 'PPM0360';
+            }
+            if (document.getElementById('matTabSelect')) {
+                document.getElementById('matTabSelect').value = 'PPM0360';
+            }
             fetchFilters(false);
             applyFilters();
         }
@@ -1472,11 +1934,618 @@
             applyFilters();
         }
 
+
+        // ============================================================
+        // MODUL F: VÝMĚNY FOREM
+        // ============================================================
+        let moldChangeTrendChartInstance = null;
+        let moldChangeDistChartInstance  = null;
+        let currentMoldChangesKpiData    = [];
+        let mcKpiSortCol = 'prumer';
+        let mcKpiSortAsc = false;
+
+        async function loadMoldChangesTab() {
+            const payload = getFilterPayload();
+
+            // Paralelní fetch KPI + Trend + Detail seznam
+            const [kpiRes, trendRes, listRes] = await Promise.all([
+                fetch('/api/kpi/mold-changes/kpi',   { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }).then(r => r.json()).catch(() => ({status:'error'})),
+                fetch('/api/kpi/mold-changes/trend',  { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }).then(r => r.json()).catch(() => ({status:'error'})),
+                fetch('/api/kpi/mold-changes',        { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }).then(r => r.json()).catch(() => ({status:'error'})),
+            ]);
+
+            // --- KPI karty ---
+            if (kpiRes.status === 'success') {
+                document.getElementById('mcKpiTotal').textContent = kpiRes.summary.CelkemVymen ?? '—';
+                const avg = kpiRes.summary.CelkovyPrumer_Min ?? 0;
+                const avgEl = document.getElementById('mcKpiAvg');
+                avgEl.textContent = avg + ' min';
+                avgEl.className = 'my-1 ' + (avg > 60 ? 'text-danger' : avg > 30 ? 'text-warning' : 'text-success');
+
+                currentMoldChangesKpiData = kpiRes.data || [];
+                renderMoldChangesKpiTable();
+            } else {
+                document.getElementById('mcKpiTotal').textContent = 'Chyba';
+                document.getElementById('mcKpiAvg').textContent   = 'Chyba';
+                document.getElementById('moldChangesKpiTbody').innerHTML =
+                    `<tr><td colspan="6" class="text-center text-danger">${kpiRes.message || 'Chyba při načítání dat'}</td></tr>`;
+            }
+
+            // --- Karta přesnosti dat (ze seznamu výměn) ---
+            if (listRes.status === 'success') {
+                const presne    = listRes.quality?.presne_z_prostoje ?? 0;
+                const odhadnute = listRes.quality?.odhad_debequ      ?? 0;
+                const total     = presne + odhadnute;
+                const pct       = total > 0 ? Math.round(presne / total * 100) : 0;
+                const qualEl    = document.getElementById('mcKpiQuality');
+                qualEl.textContent = pct + ' %';
+                qualEl.className   = 'my-1 ' + (pct >= 80 ? 'text-success' : pct >= 50 ? 'text-warning' : 'text-danger');
+                document.getElementById('mcKpiQualityDetail').textContent =
+                    `🔵 ${presne} z prostoje | ⬜ ${odhadnute} odhad`;
+            }
+
+            // --- Trend chart ---
+            if (trendRes.status === 'success' && trendRes.data.length > 0) {
+                const labels = trendRes.data.map(d => d.Datum || d.datum || '');
+                const values = trendRes.data.map(d => d.Prumer_Min || d.prumer_min || 0);
+                const counts = trendRes.data.map(d => d.PocetVymen || d.pocetVymen || 0);
+
+                if (moldChangeTrendChartInstance) moldChangeTrendChartInstance.destroy();
+                const ctx = document.getElementById('moldChangeTrendChart').getContext('2d');
+                moldChangeTrendChartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Průměrná doba výměny (min)',
+                            data: values,
+                            borderColor: 'rgba(255, 159, 64, 1)',
+                            backgroundColor: 'rgba(255, 159, 64, 0.15)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 4,
+                        }, {
+                            label: 'Počet výměn',
+                            data: counts,
+                            borderColor: 'rgba(54, 162, 235, 0.7)',
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            type: 'bar',
+                            yAxisID: 'y1',
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { position: 'top' } },
+                        scales: {
+                            y:  { title: { display: true, text: 'Minuty' } },
+                            y1: { position: 'right', title: { display: true, text: 'Počet výměn' }, grid: { drawOnChartArea: false } }
+                        }
+                    }
+                });
+            } else {
+                const ctx = document.getElementById('moldChangeTrendChart').getContext('2d');
+                if (moldChangeTrendChartInstance) moldChangeTrendChartInstance.destroy();
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.font = '14px Segoe UI';
+                ctx.fillStyle = '#888';
+                ctx.textAlign = 'center';
+                ctx.fillText('Žádná data v daném rozsahu', ctx.canvas.width / 2, 60);
+            }
+
+            // --- Distribuce chart (histogram) + tabulka detailů ---
+            if (listRes.status === 'success' && listRes.data.length > 0) {
+                const buckets = {'1–10': 0, '10–20': 0, '20–30': 0, '30–45': 0, '45–60': 0, '60–90': 0, '90–120': 0, '120+': 0};
+                listRes.data.forEach(r => {
+                    const d = r.DobaVymeny_Min || r.dobavymeny_min || 0;
+                    if      (d <= 10)  buckets['1–10']++;
+                    else if (d <= 20)  buckets['10–20']++;
+                    else if (d <= 30)  buckets['20–30']++;
+                    else if (d <= 45)  buckets['30–45']++;
+                    else if (d <= 60)  buckets['45–60']++;
+                    else if (d <= 90)  buckets['60–90']++;
+                    else if (d <= 120) buckets['90–120']++;
+                    else               buckets['120+']++;
+                });
+                const bColors = [
+                    'rgba(40,167,69,0.7)', 'rgba(40,167,69,0.7)', 'rgba(40,167,69,0.7)',
+                    'rgba(255,193,7,0.7)', 'rgba(255,193,7,0.7)',
+                    'rgba(220,53,69,0.7)', 'rgba(220,53,69,0.7)', 'rgba(220,53,69,0.7)'
+                ];
+                if (moldChangeDistChartInstance) moldChangeDistChartInstance.destroy();
+                const dctx = document.getElementById('moldChangeDistChart').getContext('2d');
+                moldChangeDistChartInstance = new Chart(dctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(buckets),
+                        datasets: [{ label: 'Počet výměn', data: Object.values(buckets), backgroundColor: bColors }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { title: { display: true, text: 'Počet výměn' } },
+                            x: { title: { display: true, text: 'Délka výměny (min)' } }
+                        }
+                    }
+                });
+
+                // Tabulka detailů
+                const tbody = document.getElementById('moldChangesListTbody');
+                tbody.innerHTML = listRes.data.map(r => {
+                    const doba   = r.DobaVymeny_Min    || r.dobavymeny_min    || 0;
+                    const zdroj  = r.ZdrojCasu         || r.zdrojcasu         || 'DEBEQU';
+                    const prvniDil = r.ZacatekVyrobyNoveFormy || r.zacatekvyrobynoveformy || '';
+                    const dobaClsCls = doba > 60 ? 'text-danger fw-bold' : doba > 30 ? 'text-warning fw-bold' : 'text-success fw-bold';
+                    // Ikona zdroje: přesný čas z prostoje = modrá tečka, odhad = šedá
+                    const zdrojBadge = zdroj === 'PROSTOJ'
+                        ? '<span class="badge bg-primary" title="Čas prvního dílu z evidence prostojů (přesný)">🔵 prostoj</span>'
+                        : '<span class="badge bg-secondary" title="Použit začátek směny (DEBEQU) – odhad, prostoj nebyl evidován">⬜ odhad</span>';
+                    return `<tr>
+                        <td><strong>${r.KodStroje || r.kodstroje || ''}</strong></td>
+                        <td><span class="badge bg-secondary">${r.StaraForma || r.staraforma || '—'}</span></td>
+                        <td><span class="badge bg-primary">${r.NovaForma   || r.novaforma   || '—'}</span></td>
+                        <td class="small">${r.KodVyrobku || r.kodvyrobku || ''}</td>
+                        <td class="text-muted small">${r.KonecVyrobyStareFormy || r.konecvyrobystareformy || ''}</td>
+                        <td class="text-muted small">${prvniDil}</td>
+                        <td class="text-center">${zdrojBadge}</td>
+                        <td class="text-end ${dobaClsCls}">${doba}</td>
+                    </tr>`;
+                }).join('');
+            } else if (listRes.status === 'success') {
+                document.getElementById('moldChangesListTbody').innerHTML =
+                    '<tr><td colspan="8" class="text-center text-muted py-3">Žádné výměny pro vybraný filtr.</td></tr>';
+            }
+        }
+
+        function renderMoldChangesKpiTable() {
+            const tbody = document.getElementById('moldChangesKpiTbody');
+            updateSortIcon('sort-mc', mcKpiSortCol, mcKpiSortAsc);
+
+            const sorted = [...currentMoldChangesKpiData].sort((a, b) => {
+                let va, vb;
+                if (mcKpiSortCol === 'stroj') {
+                    va = (a.KodStroje || '').toString();
+                    vb = (b.KodStroje || '').toString();
+                    return mcKpiSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                }
+                const colMap = { pocet: 'PocetVymen', prumer: 'Prumer_Min', min: 'Min_Min', max: 'Max_Min', stddev: 'StdDev_Min' };
+                va = Number(a[colMap[mcKpiSortCol]] ?? 0);
+                vb = Number(b[colMap[mcKpiSortCol]] ?? 0);
+                return mcKpiSortAsc ? va - vb : vb - va;
+            });
+
+            if (sorted.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Žádné výměny pro vybraný filtr.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = sorted.map(r => {
+                const avg = Number(r.Prumer_Min || 0);
+                const cls = avg > 60 ? 'text-danger fw-bold' : avg > 30 ? 'text-warning fw-bold' : 'text-success fw-bold';
+                return `<tr>
+                    <td><strong>${r.KodStroje || ''}</strong></td>
+                    <td class="text-end">${r.PocetVymen ?? '—'}</td>
+                    <td class="text-end ${cls}">${avg}</td>
+                    <td class="text-end">${r.Min_Min ?? '—'}</td>
+                    <td class="text-end">${r.Max_Min ?? '—'}</td>
+                    <td class="text-end text-muted">${r.StdDev_Min ?? '—'}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function sortMoldChanges(col) {
+            if (mcKpiSortCol === col) mcKpiSortAsc = !mcKpiSortAsc;
+            else { mcKpiSortCol = col; mcKpiSortAsc = col === 'stroj'; }
+            renderMoldChangesKpiTable();
+        }
+
+        // --- END MODUL F ---
+
+        // ============================================================
+        // MODUL G: SPOTŘEBA A BUDOUCÍ POTŘEBA MATERIÁLU
+        // ============================================================
+        let materialTrendChartInstance = null;
+        let currentMaterialOrdersData = [];
+        let currentMaterialPlannedData = [];
+        let matOrdersSortCol = 'spotreba';
+        let matOrdersSortAsc = false;
+        let matPlannedSortCol = 'chybi_mat';
+        let matPlannedSortAsc = false;
+        let materialsListLoaded = false;
+
+        async function loadMaterialsList() {
+            if (materialsListLoaded) return;
+            try {
+                const res = await fetch('/api/materials/list');
+                const json = await res.json();
+                if (json.status === 'success' && json.data) {
+                    const sel1 = document.getElementById('materialSelect');
+                    const sel2 = document.getElementById('matTabSelect');
+
+                    const buildOptions = (currentVal) => {
+                        let html = '<option value="ALL">-- Všechny suroviny a materiály --</option>';
+                        json.data.forEach(m => {
+                            const val = m.KodMaterialu;
+                            const text = `${m.KodMaterialu} - ${m.NazevMaterialu} (${m.Jednotka || 'KG'})`;
+                            const sel = (val === currentVal) ? 'selected' : '';
+                            html += `<option value="${val}" ${sel}>${text}</option>`;
+                        });
+                        return html;
+                    };
+
+                    const cur1 = sel1 ? sel1.value : 'PPM0360';
+                    const cur2 = sel2 ? sel2.value : 'PPM0360';
+
+                    if (sel1) sel1.innerHTML = buildOptions(cur1);
+                    if (sel2) sel2.innerHTML = buildOptions(cur2);
+
+                    materialsListLoaded = true;
+                }
+            } catch (err) {
+                console.error("Chyba při načítání seznamu materiálů:", err);
+            }
+        }
+
+        function onMaterialTabChange() {
+            const val = document.getElementById('matTabSelect').value;
+            if (document.getElementById('materialSelect')) {
+                document.getElementById('materialSelect').value = val;
+            }
+            loadMaterialsTab();
+        }
+
+        async function loadMaterialsTab() {
+            await loadMaterialsList();
+
+            // Synchronizace výběru mezi horním panelem a záložkou
+            const tabVal = document.getElementById('matTabSelect').value;
+            if (document.getElementById('materialSelect')) {
+                document.getElementById('materialSelect').value = tabVal;
+            }
+
+            const payload = getFilterPayload();
+            // Zajistíme, že filtr nese zvolený materiál
+            payload.material = (tabVal && tabVal !== 'ALL') ? tabVal : null;
+
+            try {
+                const res = await fetch('/api/materials/consumption', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                const json = await res.json();
+
+                if (json.status === 'success') {
+                    const sm = json.summary || {};
+                    const unit = 'kg';
+
+                    // 1. KPI KARTY: Budoucí potřeba vs. minulé odvedení
+                    document.getElementById('matKpiFutureNeeded').textContent = `${(sm.PotrebaNaDokonceni_Kg || 0).toLocaleString()} ${unit}`;
+                    document.getElementById('matKpiFutureSub').textContent = `zbývá vyrobit ${(sm.ZbyvaVyrobit_Aktivni_Ks || 0).toLocaleString()} ks`;
+
+                    document.getElementById('matKpiFutureTotal').textContent = `${(sm.PlanovanaSpotreba_Aktivni_Kg || 0).toLocaleString()} ${unit}`;
+                    document.getElementById('matKpiFutureTotalSub').textContent = `dosud hotovo ${(sm.DosudVyrobeno_Aktivni_Kg || 0).toLocaleString()} ${unit}`;
+
+                    document.getElementById('matKpiTotal').textContent = `${(sm.Spotreba_Celkem || 0).toLocaleString()} ${unit}`;
+                    document.getElementById('matKpiTotalSub').textContent = `vč. ${(sm.Spotreba_Zmetky || 0).toLocaleString()} ${unit} zmetků`;
+
+                    document.getElementById('matKpiOrders').textContent = `${sm.PocetAktivnichZakazek || 0} OF / ${sm.PocetAktivnichStroju || 0} lisů`;
+                    document.getElementById('matKpiPieces').textContent = `Aktivně v běhu nebo pozastaveno`;
+
+                    // 2. Tabulka A: Budoucí potřeba na dokončení
+                    currentMaterialPlannedData = json.planned_orders || [];
+                    document.getElementById('matPlanOrdersCountBadge').textContent = `${currentMaterialPlannedData.length} přihlášených položek`;
+                    sortMaterialPlannedInMemory();
+                    renderMaterialPlannedTable();
+
+                    // 3. Tabulka B: Historická odvedená spotřeba
+                    currentMaterialOrdersData = json.orders || [];
+                    document.getElementById('matOrdersCountBadge').textContent = `${currentMaterialOrdersData.length} odvedených položek`;
+                    sortMaterialOrdersInMemory();
+                    renderMaterialOrdersTable();
+
+                    // 4. Graf trendu odvedené spotřeby
+                    renderMaterialTrendChart(json.trend || []);
+
+                    // 5. Souhrnná tabulka materiálů
+                    renderMaterialsSummaryTable(json.materials_summary || []);
+                } else {
+                    document.getElementById('materialPlannedTableBody').innerHTML = 
+                        `<tr><td colspan="12" class="text-center text-danger py-3">Chyba: ${json.message || 'Nepodařilo se načíst data'}</td></tr>`;
+                    document.getElementById('materialOrdersTableBody').innerHTML = 
+                        `<tr><td colspan="11" class="text-center text-danger py-3">Chyba: ${json.message || 'Nepodařilo se načíst data'}</td></tr>`;
+                }
+            } catch (err) {
+                console.error("Chyba při volání API spotřeby materiálu:", err);
+                document.getElementById('materialPlannedTableBody').innerHTML = 
+                    `<tr><td colspan="12" class="text-center text-danger py-3">Chyba spojení se serverem: ${err}</td></tr>`;
+                document.getElementById('materialOrdersTableBody').innerHTML = 
+                    `<tr><td colspan="11" class="text-center text-danger py-3">Chyba spojení se serverem: ${err}</td></tr>`;
+            }
+        }
+
+        // --- Řazení a vykreslení TABULKY A: Plán / Budoucí potřeba ---
+        function sortMaterialPlannedInMemory() {
+            const col = matPlannedSortCol;
+            currentMaterialPlannedData.sort((a, b) => {
+                let va, vb;
+                if (col === 'of') {
+                    va = (a.CisloZakazky || '').toString();
+                    vb = (b.CisloZakazky || '').toString();
+                    return matPlannedSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                } else if (col === 'stroj') {
+                    va = (a.Stroj || '').toString();
+                    vb = (b.Stroj || '').toString();
+                    return matPlannedSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                } else if (col === 'vyrobek') {
+                    va = (a.KodVyrobku || '').toString();
+                    vb = (b.KodVyrobku || '').toString();
+                    return matPlannedSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                }
+
+                const colMap = {
+                    plan_ks: 'Planovano_Ks',
+                    vyrobeno_ks: 'Vyrobeno_Ks',
+                    zbyva_ks: 'ZbyvaVyrobit_Ks',
+                    plan_mat: 'PlanovanaSpotreba_Celkem',
+                    hotovo_mat: 'DosudSpotrebovano_Kg',
+                    chybi_mat: 'PotrebaNaDokonceni_Kg'
+                };
+                va = Number(a[colMap[col]] ?? 0);
+                vb = Number(b[colMap[col]] ?? 0);
+                return matPlannedSortAsc ? va - vb : vb - va;
+            });
+        }
+
+        function renderMaterialPlannedTable() {
+            const tbody = document.getElementById('materialPlannedTableBody');
+            updateSortIcon('sort-matp', matPlannedSortCol, matPlannedSortAsc);
+
+            if (currentMaterialPlannedData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="12" class="text-center text-muted py-3">Žádné aktivní přihlášené zakázky pro vybraný materiál.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = currentMaterialPlannedData.map(r => {
+                const chybiKg = Number(r.PotrebaNaDokonceni_Kg || 0);
+                const planKg = Number(r.PlanovanaSpotreba_Celkem || 0);
+                const hotovoKg = Number(r.DosudSpotrebovano_Kg || 0);
+                const zbyvaKs = Number(r.ZbyvaVyrobit_Ks || 0);
+                const jednotka = r.Jednotka || 'kg';
+
+                const chybiBadge = chybiKg > 0 
+                    ? `<span class="badge bg-danger fs-6 px-2 py-1">${chybiKg.toFixed(2)} ${jednotka}</span>`
+                    : `<span class="badge bg-success">Hotovo (0 ${jednotka})</span>`;
+
+                const statusBadge = (r.StatusKod === 'L')
+                    ? `<span class="badge bg-success">🟢 Běží</span>`
+                    : (r.StatusKod === 'S' 
+                        ? `<span class="badge bg-warning text-dark">🟡 Pozastaveno</span>` 
+                        : `<span class="badge bg-secondary">⚪ ${r.StatusNazev || r.StatusKod}</span>`);
+
+                return `<tr>
+                    <td><strong class="text-primary">${r.CisloZakazky || '-'}</strong></td>
+                    <td><strong>${r.Stroj || '-'}</strong> <br><small class="text-muted">${r.NazevStroje || ''}</small></td>
+                    <td><strong>${r.KodVyrobku || '-'}</strong> <br><small class="text-muted">${r.NazevVyrobku || ''}</small></td>
+                    <td><span class="badge bg-secondary">${r.KodMaterialu || '-'}</span> <br><small class="text-muted">${r.NazevMaterialu || ''}</small></td>
+                    <td class="text-end text-muted">${Number(r.DavkaNaKus || 0).toFixed(4)}</td>
+                    <td class="text-end">${Number(r.Planovano_Ks || 0).toLocaleString()}</td>
+                    <td class="text-end text-success">${Number(r.Vyrobeno_Ks || 0).toLocaleString()}</td>
+                    <td class="text-end fw-bold ${zbyvaKs > 0 ? 'text-danger' : 'text-muted'}">${zbyvaKs.toLocaleString()}</td>
+                    <td class="text-end">${planKg.toFixed(2)} ${jednotka}</td>
+                    <td class="text-end text-success">${hotovoKg.toFixed(2)} ${jednotka}</td>
+                    <td class="text-end">${chybiBadge}</td>
+                    <td class="text-center">${statusBadge}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function sortMaterialPlanned(col) {
+            if (matPlannedSortCol === col) matPlannedSortAsc = !matPlannedSortAsc;
+            else { matPlannedSortCol = col; matPlannedSortAsc = col === 'of' || col === 'stroj' || col === 'vyrobek'; }
+            sortMaterialPlannedInMemory();
+            renderMaterialPlannedTable();
+        }
+                    
+
+        function renderMaterialTrendChart(trendData) {
+            const ctx = document.getElementById('materialTrendChart').getContext('2d');
+            if (materialTrendChartInstance) materialTrendChartInstance.destroy();
+
+            if (!trendData || trendData.length === 0) {
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                ctx.font = '14px Segoe UI';
+                ctx.fillStyle = '#888';
+                ctx.textAlign = 'center';
+                ctx.fillText('Žádná data spotřeby pro vybrané období a materiál', ctx.canvas.width / 2, 45);
+                return;
+            }
+
+            const labels = trendData.map(d => d.Datum || '');
+            const kgs = trendData.map(d => d.Spotreba_Kg || 0);
+            const ofs = trendData.map(d => d.PocetZakazek || 0);
+
+            materialTrendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Spotřeba materiálu (kg)',
+                            data: kgs,
+                            borderColor: 'rgba(25, 118, 210, 1)',
+                            backgroundColor: 'rgba(25, 118, 210, 0.15)',
+                            fill: true,
+                            tension: 0.25,
+                            pointRadius: 4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Počet zakázek (OF)',
+                            data: ofs,
+                            type: 'bar',
+                            backgroundColor: 'rgba(255, 193, 7, 0.4)',
+                            borderColor: 'rgba(255, 193, 7, 0.9)',
+                            borderWidth: 1,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' }
+                    },
+                    scales: {
+                        y: {
+                            title: { display: true, text: 'Spotřeba (kg)' },
+                            beginAtZero: true
+                        },
+                        y1: {
+                            position: 'right',
+                            title: { display: true, text: 'Počet zakázek' },
+                            beginAtZero: true,
+                            grid: { drawOnChartArea: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        function sortMaterialOrdersInMemory() {
+            const col = matOrdersSortCol;
+            currentMaterialOrdersData.sort((a, b) => {
+                let va, vb;
+                if (col === 'of') {
+                    va = (a.CisloZakazky || '').toString();
+                    vb = (b.CisloZakazky || '').toString();
+                    return matOrdersSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                } else if (col === 'stroj') {
+                    va = (a.Stroj || '').toString();
+                    vb = (b.Stroj || '').toString();
+                    return matOrdersSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                } else if (col === 'vyrobek') {
+                    va = (a.KodVyrobku || '').toString();
+                    vb = (b.KodVyrobku || '').toString();
+                    return matOrdersSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                } else if (col === 'mat') {
+                    va = (a.KodMaterialu || '').toString();
+                    vb = (b.KodMaterialu || '').toString();
+                    return matOrdersSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                } else if (col === 'datum') {
+                    va = (a.PrvniVyroba || '').toString();
+                    vb = (b.PrvniVyroba || '').toString();
+                    return matOrdersSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+                }
+
+                const colMap = {
+                    davka: 'DavkaNaKus',
+                    vyrobeno: 'Vyrobeno_Ks',
+                    dobre: 'Dobre_Ks',
+                    zmetky: 'Zmetky_Ks',
+                    spotreba: 'Spotreba_Celkem',
+                    ztrata: 'Spotreba_Zmetky'
+                };
+                va = Number(a[colMap[col]] ?? 0);
+                vb = Number(b[colMap[col]] ?? 0);
+                return matOrdersSortAsc ? va - vb : vb - va;
+            });
+        }
+
+        function renderMaterialOrdersTable() {
+            const tbody = document.getElementById('materialOrdersTableBody');
+            updateSortIcon('sort-mat', matOrdersSortCol, matOrdersSortAsc);
+
+            if (currentMaterialOrdersData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-3">Žádné zakázky neodpovídají zadanému filtru materiálu a data.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = currentMaterialOrdersData.map(r => {
+                const totalKg = Number(r.Spotreba_Celkem || 0);
+                const scrapKg = Number(r.Spotreba_Zmetky || 0);
+                const goodKg = Number(r.Spotreba_Dobre || 0);
+                const jednotka = r.Jednotka || 'kg';
+
+                const scrapBadge = scrapKg > 0 
+                    ? `<span class="text-danger fw-semibold">${scrapKg.toFixed(2)} ${jednotka}</span>`
+                    : `<span class="text-muted">0.00</span>`;
+
+                return `<tr>
+                    <td><strong class="text-primary">${r.CisloZakazky || '-'}</strong></td>
+                    <td><strong>${r.Stroj || '-'}</strong> <br><small class="text-muted">${r.NazevStroje || ''}</small></td>
+                    <td><strong>${r.KodVyrobku || '-'}</strong> <br><small class="text-muted">${r.NazevVyrobku || ''}</small></td>
+                    <td><span class="badge bg-secondary">${r.KodMaterialu || '-'}</span> <br><small class="text-muted">${r.NazevMaterialu || ''}</small></td>
+                    <td class="text-end">${Number(r.DavkaNaKus || 0).toFixed(4)}</td>
+                    <td class="text-end fw-bold">${Number(r.Vyrobeno_Ks || 0).toLocaleString()}</td>
+                    <td class="text-end text-success">${Number(r.Dobre_Ks || 0).toLocaleString()}</td>
+                    <td class="text-end text-danger">${Number(r.Zmetky_Ks || 0).toLocaleString()}</td>
+                    <td class="text-end fw-bold text-primary">${totalKg.toFixed(2)} ${jednotka}</td>
+                    <td class="text-end">${scrapBadge}</td>
+                    <td class="text-muted small">${(r.PrvniVyroba || '').substring(0, 16)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function sortMaterialOrders(col) {
+            if (matOrdersSortCol === col) matOrdersSortAsc = !matOrdersSortAsc;
+            else { matOrdersSortCol = col; matOrdersSortAsc = col === 'of' || col === 'stroj' || col === 'vyrobek' || col === 'mat'; }
+            sortMaterialOrdersInMemory();
+            renderMaterialOrdersTable();
+        }
+
+        function filterByMaterialCode(matCode) {
+            if (document.getElementById('matTabSelect')) {
+                document.getElementById('matTabSelect').value = matCode;
+            }
+            if (document.getElementById('materialSelect')) {
+                document.getElementById('materialSelect').value = matCode;
+            }
+            loadMaterialsTab();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderMaterialsSummaryTable(matsData) {
+            const tbody = document.getElementById('materialsSummaryTableBody');
+            if (!matsData || matsData.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-3">Žádné záznamy o spotřebě materiálů.</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = matsData.map(m => {
+                const total = Number(m.Spotreba_Celkem || 0).toFixed(2);
+                const zmetky = Number(m.Spotreba_Zmetky || 0).toFixed(2);
+                const jed = m.Jednotka || 'KG';
+                return `<tr>
+                    <td><strong>${m.KodMaterialu}</strong></td>
+                    <td>${m.NazevMaterialu}</td>
+                    <td class="text-center"><span class="badge bg-light text-dark border">${jed}</span></td>
+                    <td class="text-end">${m.PocetZakazek}</td>
+                    <td class="text-end">${m.PocetStroju}</td>
+                    <td class="text-end fw-bold text-primary">${total} ${jed}</td>
+                    <td class="text-end text-danger">${zmetky} ${jed}</td>
+                    <td class="text-center">
+                        <button class="btn btn-outline-primary btn-sm py-0 px-2" onclick="filterByMaterialCode('${m.KodMaterialu}')">
+                            Filtrovat 🔍
+                        </button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        // --- END MODUL G ---
+
         window.onload = async () => {
             setDefaultDateRange();
+            
+            // Načtení uložené ceny elektřiny do inputu
+            const savedPrice = localStorage.getItem('energy_price_kc_kwh');
+            if (savedPrice) {
+                document.getElementById('energyPriceInput').value = savedPrice;
+            }
+
             await fetchFilters(true);
+            await loadMaterialsList();
             loadProductionTab();
-        };
-    </script>
+        };    </script>
 </body>
 </html>

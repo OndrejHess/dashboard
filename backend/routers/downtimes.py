@@ -32,6 +32,10 @@ def get_downtimes(filters: FilterRequest):
             formatted_machines = "', '".join([m.strip() for m in filters.machines])
             where_clauses.append(f"RTRIM(LTRIM(CAST(BSARREQU_REFMAC AS VARCHAR(50)))) IN ('{formatted_machines}')")
 
+        if filters.molds and len(filters.molds) > 0 and "ALL" not in filters.molds:
+            formatted_molds = "', '".join([m.strip() for m in filters.molds])
+            where_clauses.append(f"RTRIM(LTRIM(CAST(BSARREQU_REFMAC AS VARCHAR(50)))) IN (SELECT DISTINCT RTRIM(LTRIM(CAST(REFMAC AS VARCHAR(50)))) FROM {res_table} WHERE RTRIM(LTRIM(CAST(REFOUT AS VARCHAR(50)))) IN ('{formatted_molds}'))")
+
         where_str = " AND ".join(where_clauses)
         
         query = f"""
@@ -48,19 +52,29 @@ def get_downtimes(filters: FilterRequest):
         df = pd.read_sql(query, conn)
         conn.close()
 
+        # Calculate total downtime for contribution percentage (handle case insensitivity from pyodbc)
+        trvani_col = next((c for c in df.columns if c.lower() == 'trvani_hodin'), None)
+        total_downtime = df[trvani_col].sum() if (not df.empty and trvani_col) else 0
+
         records = []
         for _, row in df.iterrows():
             duvod = str(row.get('duvodprostoje', row.get('DuvodProstoje', 'Neznámý')))
             trvani = round(float(row.get('trvani_hodin', row.get('Trvani_Hodin', 0.0))), 2)
             zastaveni = int(row.get('pocet_zastaveni', row.get('Pocet_Zastaveni', 0)))
+            disponibilni = trvani  # placeholder, same as duration
+            podil = round(float((trvani / total_downtime) * 100), 2) if total_downtime > 0 else 0.0
             records.append({
                 "DuvodProstoje": duvod,
                 "Trvani_Hodin": trvani,
                 "Pocet_Zastaveni": zastaveni,
-                # Malá písmena pro zpětnou kompatibilitu
+                "DisponibilniDoba": disponibilni,
+                "Podil_NonOEE": podil,
+                # lowercase for backward compatibility
                 "duvodprostoje": duvod,
                 "trvani_hodin": trvani,
-                "pocet_zastaveni": zastaveni
+                "pocet_zastaveni": zastaveni,
+                "disponibilni_doba": disponibilni,
+                "podil_non_oee": podil
             })
 
         return {"status": "success", "data": records}

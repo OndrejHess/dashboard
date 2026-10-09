@@ -56,16 +56,23 @@ def get_scraps(filters: FilterRequest):
         df = pd.read_sql(query, conn)
         conn.close()
 
+        # Calculate total scrap for contribution percentage (handle case insensitivity from pyodbc)
+        zmetky_col = next((c for c in df.columns if c.lower() == 'zmetky_ks'), None)
+        total_scrap = df[zmetky_col].sum() if (not df.empty and zmetky_col) else 0
+
         records = []
         for _, row in df.iterrows():
             vada = str(row.get('typvady', row.get('TypVady', 'Neznámá vada')))
             pocet = int(row.get('zmetky_ks', row.get('Zmetky_Ks', 0)))
+            podil = round(float((pocet / total_scrap) * 100), 2) if total_scrap > 0 else 0.0
             records.append({
                 "TypVady": vada,
                 "Zmetky_Ks": pocet,
-                # Malá písmena pro zpětnou kompatibilitu
+                "Podil_NonOEE": podil,
+                # lowercase for backward compatibility
                 "typvady": vada,
-                "zmetky_ks": pocet
+                "zmetky_ks": pocet,
+                "podil_non_oee": podil
             })
 
         return {"status": "success", "data": records}

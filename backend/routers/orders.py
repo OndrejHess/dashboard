@@ -28,6 +28,13 @@ def get_sap_orders(filters: Optional[FilterRequest] = None):
             if filters.molds and len(filters.molds) > 0 and "ALL" not in filters.molds:
                 formatted_molds = "', '".join([m.strip() for m in filters.molds])
                 where_clauses.append(f"RTRIM(LTRIM(CAST(o.out_refout AS VARCHAR(50)))) IN ('{formatted_molds}')")
+            if filters.articles and len(filters.articles) > 0 and "ALL" not in filters.articles:
+                formatted_arts = "', '".join([a.strip() for a in filters.articles])
+                where_clauses.append(f"RTRIM(LTRIM(CAST(l.prod_refprod AS VARCHAR(50)))) IN ('{formatted_arts}')")
+            if filters.start_date and filters.start_date.strip() and filters.end_date and filters.end_date.strip():
+                s_date = filters.start_date.strip()
+                e_date = filters.end_date.strip()
+                where_clauses.append(f"(o.of_evolution = 'L' OR (CAST(ISNULL(o.of_datelancer, o.of_datelancep) AS DATE) >= '{s_date}' AND CAST(ISNULL(o.of_datelancer, o.of_datelancep) AS DATE) <= '{e_date}'))")
 
         where_str = " AND ".join(where_clauses)
         
@@ -58,6 +65,7 @@ def get_sap_orders(filters: Optional[FilterRequest] = None):
             LEFT JOIN (
                 SELECT 
                     of_refof, 
+                    MAX(RTRIM(LTRIM(CAST(prod_refprod AS VARCHAR(50))))) AS prod_refprod,
                     SUM(ISNULL(ligof_qtelance, 0)) AS Planovano_Ks,
                     SUM(ISNULL(ligof_qtebonne, 0)) AS Vyrobeno_Ks,
                     SUM(ISNULL(ligof_qterebut, 0)) AS Zmetky_Ks

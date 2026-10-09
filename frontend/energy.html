@@ -44,26 +44,21 @@
         <!-- Tabulka dat -->
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Záznamy spotřeby (dbo.PVL_CONSO_ENERGIE_ALERTES_EQUIPE)</span>
-                <span id="alertsCountBadge" class="badge bg-danger">-- záznamů</span>
+                <span>Souhrn spotřeby a prostojů dle lisů (SUIVPRO)</span>
+                <span id="alertsCountBadge" class="badge bg-danger">-- lisů</span>
             </div>
             <div class="card-body table-responsive">
                 <table class="table table-hover table-striped align-middle">
                     <thead class="table-light">
                         <tr>
-                            <th>Začátek směny</th>
-                            <th>Konec směny</th>
-                            <th>Stroj (REFMAC)</th>
-                            <th>Směna</th>
-                            <th>Typ OF</th>
-                            <th>Typ události</th>
-                            <th>Začátek alertu</th>
-                            <th>Konec alertu</th>
-                            <th class="text-end">Ztráta (kWh)</th>
+                            <th>Stroj (Lis)</th>
+                            <th class="text-end">Počet alertů</th>
+                            <th class="text-end">Celkové trvání (hod)</th>
+                            <th class="text-end">Celková ztráta (kWh)</th>
                         </tr>
                     </thead>
                     <tbody id="energyAlertsTableBody">
-                        <tr><td colspan="9" class="text-center text-muted">Načítám data...</td></tr>
+                        <tr><td colspan="4" class="text-center text-muted">Načítám data...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -106,35 +101,47 @@
                 tbody.innerHTML = '';
 
                 if (json.status === 'success' && json.data && json.data.length > 0) {
-                    document.getElementById('alertsCountBadge').innerText = `${json.data.length} záznamů`;
+                    const map = {};
                     json.data.forEach(row => {
-                        const debEqu = row.BILOFEQU_DEBEQU || row.bilofequ_debequ || '';
-                        const finEqu = row.BILOFEQU_FINEQU || row.bilofequ_finequ || '';
-                        const refMac = row.BILOFEQU_REFMAC || row.bilofequ_refmac || '';
-                        const refEquipe = row.EQUI_REFEQUIPE || row.equi_refequipe || '';
-                        const typeOf = row.BILOFEQU_TYPEOF || row.bilofequ_typeof || '';
-                        const typeEve = row.BILOFEQU_TYPEEVE || row.bilofequ_typeeve || '';
-                        const debAlerte = row.BILOFEQU_DEBALERTE || row.bilofequ_debalerte || '';
-                        const finalerte = row.BILOFEQU_FINALERTE || row.bilofequ_finalerte || '';
-                        const consoKwh = row.BILOFEQU_CONSO_KWH || row.bilofequ_conso_kwh || 0;
+                        const refMac = row.BILOFEQU_REFMAC || row.bilofequ_refmac || 'Neznámý lis';
+                        const consoKwh = Number(row.BILOFEQU_CONSO_KWH || row.bilofequ_conso_kwh || 0);
+                        const debAlerte = row.BILOFEQU_DEBALERTE || row.bilofequ_debalerte;
+                        const finalerte = row.BILOFEQU_FINALERTE || row.bilofequ_finalerte;
+                        
+                        let durationH = 0;
+                        if (debAlerte && finalerte && debAlerte !== '-' && finalerte !== '-') {
+                            const d1 = new Date(debAlerte);
+                            const d2 = new Date(finalerte);
+                            if (!isNaN(d1) && !isNaN(d2) && d2 > d1) {
+                                durationH = (d2 - d1) / (1000 * 60 * 60);
+                            }
+                        }
 
+                        if (!map[refMac]) {
+                            map[refMac] = { stroj: refMac, pocet: 0, trvani: 0, conso: 0 };
+                        }
+                        map[refMac].pocet += 1;
+                        map[refMac].trvani += durationH;
+                        map[refMac].conso += consoKwh;
+                    });
+
+                    const list = Object.values(map);
+                    list.sort((a, b) => b.conso - a.conso);
+
+                    document.getElementById('alertsCountBadge').innerText = `${json.data.length} incidentů (${list.length} lisů)`;
+                    list.forEach(r => {
                         tbody.innerHTML += `
                             <tr>
-                                <td><small>${debEqu}</small></td>
-                                <td><small>${finEqu}</small></td>
-                                <td><strong>${refMac}</strong></td>
-                                <td>${refEquipe}</td>
-                                <td>${typeOf}</td>
-                                <td>${typeEve}</td>
-                                <td><small>${debAlerte}</small></td>
-                                <td><small>${finalerte}</small></td>
-                                <td class="text-end text-danger fw-bold">${Number(consoKwh).toFixed(2)}</td>
+                                <td><strong>${r.stroj}</strong></td>
+                                <td class="text-end">${r.pocet}</td>
+                                <td class="text-end">${r.trvani.toFixed(2)} h</td>
+                                <td class="text-end text-danger fw-bold">${r.conso.toFixed(2)} kWh</td>
                             </tr>
                         `;
                     });
                 } else {
                     document.getElementById('alertsCountBadge').innerText = `0 záznamů`;
-                    tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">Žádné záznamy pro vybrané období.</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted">Žádné záznamy pro vybrané období.</td></tr>`;
                 }
             } catch (err) {
                 showError("Chyba při načítání dat: " + err);

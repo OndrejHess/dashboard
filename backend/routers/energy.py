@@ -29,7 +29,7 @@ def get_energy_alerts(filters: Optional[FilterRequest] = None):
         where_str = " AND ".join(where_clauses)
         
         query = f"""
-            SELECT TOP 200
+            SELECT TOP 5000
                 BILOFEQU_DEBEQU, 
                 BILOFEQU_FINEQU, 
                 RTRIM(LTRIM(CAST(BILOFEQU_REFMAC AS VARCHAR(50)))) AS BILOFEQU_REFMAC, 

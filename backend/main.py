@@ -13,7 +13,9 @@ try:
         energy,
         operators,
         orders,
-        legacy
+        legacy,
+        mold_changes,
+        materials
     )
 except (ImportError, ValueError):
     from routers import (
@@ -24,7 +26,9 @@ except (ImportError, ValueError):
         energy,
         operators,
         orders,
-        legacy
+        legacy,
+        mold_changes,
+        materials
     )
 
 app = FastAPI(
@@ -51,6 +55,8 @@ app.include_router(energy.router)
 app.include_router(operators.router)
 app.include_router(orders.router)
 app.include_router(legacy.router)
+app.include_router(mold_changes.router)
+app.include_router(materials.router)
 
 # Cesty k frontendu
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
